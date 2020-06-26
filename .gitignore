@@ -3,3 +3,7 @@
 
 # IntelliJ files
 .idea
+out
+
+# Tests
+src/Test.java
