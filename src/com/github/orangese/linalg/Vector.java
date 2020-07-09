@@ -1,4 +1,4 @@
-package com.github.orangese.linalg.v2;
+package com.github.orangese.linalg;
 
 public class Vector extends Matrix {
 

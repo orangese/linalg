@@ -1,33 +1,79 @@
 package com.github.orangese.linalg;
 
-import com.github.orangese.linalg.indexing.Slice;
+public class Scalar extends LinAlgObj {
 
-public class Scalar extends LAObject {
-
-    private Number scalar;
-
-    public Scalar(Number scalar) {
-        this.scalar = scalar;
-        this.setShape(new Dimension());
+    public Scalar(double val) {
+        this.setData(new double[]{val});
+        this.setShape(new int[]{});
     }
 
-    public Number value() {
-        return scalar;
+    public double val() {
+        return data()[0];
     }
 
-    public void set(Number newScalar) {
-        scalar = newScalar;
+    @Override
+    protected void checkAddShapes(LinAlgObj other) throws UnsupportedOperationException {
+        if (other.ndims() != 0) {
+            throw new UnsupportedOperationException("cannot add scalar and non-scalar with ndims " + other.ndims());
+        }
     }
 
-    public LAObject slice(Slice slice) throws IllegalArgumentException {
-        throw new IllegalArgumentException("Scalar cannot be sliced");
+    @Override
+    protected void checkMulShapes(LinAlgObj other) throws UnsupportedOperationException {
+        if (other.ndims() != 0) {
+            throw new UnsupportedOperationException("cannot mul scalar and non-scalar with ndims " + other.ndims());
+        }
     }
 
-    public String partialToString() {
-        return " " + toString() + " ";
+    @Override
+    public Scalar add(LinAlgObj other) {
+        checkAddShapes(other);
+        return new Scalar(val() + ((Scalar) other).val());
     }
 
+    @Override
+    public Scalar subtract(LinAlgObj other) {
+        checkAddShapes(other);
+        return new Scalar(val() + ((Scalar) other).val());
+    }
+
+    @Override
+    public LinAlgObj mul(LinAlgObj other) {
+        double[] newData = new double[other.data().length];
+        for (int i = 0; i < other.data().length; i++) {
+            newData[i] = other.data()[i] * val();
+        }
+        return newData.length > 1 ? new Matrix(newData, other.shape()) : new Scalar(newData[0]);
+    }
+
+    public Scalar div(Scalar other) {
+        return new Scalar(val() / other.val());
+    }
+
+    @Override
+    public void iadd(LinAlgObj other) {
+        checkAddShapes(other);
+        data()[0] += ((Scalar) other).val();
+    }
+
+    @Override
+    public void isubtract(LinAlgObj other) {
+        checkAddShapes(other);
+        data()[0] -= ((Scalar) other).val();
+    }
+
+    public void imul(LinAlgObj other) {
+        checkMulShapes(other);
+        data()[0] *= ((Scalar) other).val();
+    }
+
+    public void idiv(Scalar other) {
+        checkAddShapes(other);
+        data()[0] /= other.val();
+    }
+
+    @Override
     public String toString() {
-        return String.valueOf(scalar);
+        return String.valueOf(this.val());
     }
 }
