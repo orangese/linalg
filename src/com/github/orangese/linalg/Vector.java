@@ -13,13 +13,13 @@ public class Vector extends Matrix {
         }
     }
 
-    public double dot(Vector other) {
+    public Scalar dot(Vector other) {
         checkAddShapes(other); // add shape requirements == dot prod shape requirements
         double prod = 0;
         for (int i = 0; i < data().length; i++) {
             prod += data()[i] * other.data()[i];
         }
-        return prod;
+        return new Scalar(prod);
     }
 
 }
