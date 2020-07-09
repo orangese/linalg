@@ -8,6 +8,10 @@ public class Slice {
     private int start;
     private int stop;
 
+    public Slice() {
+        this(0, -1);
+    }
+
     public Slice(int start) {
         this(start, -1);
     }
@@ -44,11 +48,11 @@ public class Slice {
     }
 
     public int calcNewStart(Dimension shape) {
-        return getStart() < 0 ? shape.getAlongAxis(0) + getStart() : getStart();
+        return start < 0 ? shape.getAlongAxis(0) + start + 1 : start;
     }
 
     public int calcNewStop(Dimension shape) {
-        return getStop() < 0 ? shape.getAlongAxis(0) + getStop() : getStop();
+        return stop < 0 ? shape.getAlongAxis(0) + stop + 1 : stop;
     }
 
     public String toString() {
