@@ -5,7 +5,7 @@ import java.util.Arrays;
 public abstract class LinAlgObj {
 
     private double[] data;
-    private int[] shape;
+    private Shape shape;
 
     protected void setData(double[] data) {
         this.data = data;
@@ -15,11 +15,11 @@ public abstract class LinAlgObj {
         return data;
     }
 
-    protected void setShape(int[] shape) {
+    protected void setShape(Shape shape) {
         this.shape = shape;
     }
 
-    public int[] shape() {
+    public Shape shape() {
         return shape;
     }
 
@@ -51,7 +51,7 @@ public abstract class LinAlgObj {
     public String toString() {
         return getClass().getSimpleName() + "{" +
                 "data=" + Arrays.toString(data()) +
-                ", shape=" + Arrays.toString(shape()) +
+                ", shape=" + shape() +
                 '}';
     }
 

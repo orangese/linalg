@@ -4,7 +4,7 @@ public class Scalar extends LinAlgObj {
 
     public Scalar(double val) {
         this.setData(new double[]{val});
-        this.setShape(new int[]{});
+        this.setShape(new Shape());
     }
 
     public double val() {

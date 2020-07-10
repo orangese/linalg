@@ -1,20 +1,19 @@
 package com.github.orangese.linalg;
 
-import java.util.Arrays;
-
 public class Matrix extends LinAlgObj {
 
+    public static int PRINT_PRECISION = 3;
     private int[] strides;
 
     public Matrix(double[] data) {
         this.setData(new double[data.length]);
         System.arraycopy(data, 0, this.data(), 0, data.length);
-        this.setShape(new int[]{1, data.length});
+        this.setShape(new Shape(1, data.length));
     }
 
-    public Matrix(double[] data, int[] shape) {
+    public Matrix(double[] data, Shape shape) {
         this(data);
-        System.arraycopy(shape, 0, this.shape(), 0, shape.length);
+        System.arraycopy(shape.toArray(), 0, this.shape().toArray(), 0, shape.length);
         this.setShape(shape());
     }
 
@@ -29,42 +28,38 @@ public class Matrix extends LinAlgObj {
             }
             System.arraycopy(data[axis], 0, this.data(), data[axis].length * axis, data[axis].length);
         }
-        this.setShape(new int[]{data.length, this.data().length / data.length});
+        this.setShape(new Shape(data.length, this.data().length / data.length));
     }
 
     public Matrix(Matrix other) {
         setData(new double[other.data().length]);
         System.arraycopy(other.data(), 0, data(), 0, other.data().length);
 
-        setShape(new int[other.ndims()]);
-        System.arraycopy(other.shape(), 0, shape(), 0, other.ndims());
+        setShape(new Shape(other.shape()));
 
         strides = new int[other.strides.length];
         System.arraycopy(other.strides, 0, strides, 0, other.strides.length);
     }
 
-    private Matrix(double[] data, int[] shape, int[] strides) {
+    private Matrix(double[] data, Shape shape, int[] strides) {
         // used internally to create transposes, which are views
         this.setData(data);
         this.setShape(shape);
         this.strides = strides;
     }
 
-    protected void setShape(int[] shape) {
+    @Override
+    protected void setShape(Shape shape) {
         // strides/indexing written generally in case tensor support is added later
         strides = new int[shape.length];
         int currStride = 1;
         for (int i = shape.length - 1; i >= 0; i--) {
             if (i != shape.length - 1) {
-                currStride *= shape[i + 1];
+                currStride *= shape.axis(i + 1);
             }
             this.strides[i] = currStride;
         }
         super.setShape(shape);
-    }
-
-    public int[] strides() {
-        return strides;
     }
 
     private int getStrided(int... idxs) throws IllegalArgumentException {
@@ -78,13 +73,13 @@ public class Matrix extends LinAlgObj {
         for (int axis = 0; axis < ndims(); axis++) {
             int currIdx = idxs[axis];
 
-            if (currIdx < -shape()[axis] || currIdx >= shape()[axis]) {
+            if (currIdx < -shape().axis(axis) || currIdx >= shape().axis(axis)) {
                 throw new ArrayIndexOutOfBoundsException(String.format(
-                        "index %d out of range for axis %d of length %d", currIdx, axis, shape()[axis]
+                        "index %d out of range for axis %d of length %d", currIdx, axis, shape().axis(axis)
                 ));
             } if (currIdx < 0) {
                 // negative indexes are supported
-                currIdx += shape()[axis];
+                currIdx += shape().axis(axis);
             }
             strided += currIdx * strides[axis];
         }
@@ -99,30 +94,36 @@ public class Matrix extends LinAlgObj {
         data()[getStrided(idxs)] = newVal;
     }
 
-    private void shapeFailure(LinAlgObj other) throws UnsupportedOperationException {
-        throw new UnsupportedOperationException(String.format(
-                "shape %s does not match shape %s for requested operation",
-                Arrays.toString(shape()),
-                Arrays.toString(other.shape())
-        ));
+    public boolean isSquare() {
+        int refShape = shape().axis(0);
+        for (int axis = 0; axis < shape().length; axis++) {
+            if (refShape != shape().axis(axis)) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    protected void checkAddShapes(LinAlgObj other) {
-        if (!Arrays.equals(shape(), other.shape())) {
-            shapeFailure(other);
+    protected void checkAddShapes(LinAlgObj other) throws UnsupportedOperationException {
+        if (!shape().equals(other.shape())) {
+            throw new UnsupportedOperationException(String.format(
+                "shape %s does not match shape %s for addition/subtraction", shape(), other.shape()
+            ));
         }
     }
 
-    protected void checkMulShapes(LinAlgObj other) {
-        if (other.ndims() > 0 && shape()[ndims() - 1] != other.shape()[0]) {
-            shapeFailure(other);
+    protected void checkMulShapes(LinAlgObj other) throws UnsupportedOperationException {
+        if (other.ndims() > 0 && shape().axis(ndims() - 1) != other.shape().axis(0)) {
+            throw new UnsupportedOperationException(String.format(
+                "shape %s does not match shape %s for multiplication", shape(), other.shape()
+            ));
         }
     }
 
-    private void imatMul(Matrix b, Matrix newMatrix) {
-        for (int i = 0; i < shape()[0]; i++) {
-            for (int j = 0; j < b.shape()[1]; j++) {
-                for (int k = 0; k < shape()[1]; k++) {
+    private void imatMul2x2(Matrix b, Matrix newMatrix) {
+        for (int i = 0; i < shape().axis(0); i++) {
+            for (int j = 0; j < b.shape().axis(1); j++) {
+                for (int k = 0; k < shape().axis(1); k++) {
                     int[] idxs = new int[]{i, j};
                     newMatrix.set(idxs, newMatrix.get(idxs) + get(i, k) * b.get(k, j));
                 }
@@ -130,9 +131,7 @@ public class Matrix extends LinAlgObj {
         }
     }
 
-    private void imatPow(Scalar scalar, Matrix newMatrix) {
-        ;
-    }
+    private void imatPow2x2(Scalar scalar, Matrix newMatrix) { }
 
     @Override
     public <T extends LinAlgObj> Matrix add(T other) {
@@ -161,16 +160,17 @@ public class Matrix extends LinAlgObj {
             // scalar multiplication is communative
             return other.mul(this);
         } else {
-            Matrix newMatrix = new Matrix(new double[shape()[0]][other.shape()[other.ndims() - 1]]);
-            imatMul((Matrix) other, newMatrix);
+            Matrix newMatrix = new Matrix(new double[shape().axis(0)][other.shape().axis(other.ndims() - 1)]);
+            imatMul2x2((Matrix) other, newMatrix);
             return newMatrix;
         }
     }
 
     @Override
     public LinAlgObj pow(Scalar scalar) {
+        checkAddShapes(this);
         Matrix newMatrix = new Matrix(new double[data().length]);
-        imatPow(scalar, newMatrix);
+        imatPow2x2(scalar, newMatrix);
         return newMatrix;
     }
 
@@ -193,39 +193,79 @@ public class Matrix extends LinAlgObj {
     @Override
     public <T extends LinAlgObj> void imul(T other) {
         checkAddShapes(other);
-        imatMul((Matrix) other, this);
+        imatMul2x2((Matrix) other, this);
     }
 
     @Override
     public void ipow(Scalar scalar) {
         checkAddShapes(this);
-        imatPow(scalar, this);
+        imatPow2x2(scalar, this);
     }
 
     public Matrix transpose() {
         int[] newShape = new int[ndims()];
         int[] newStrides = new int[ndims()];
         for (int axis = 0; axis < ndims(); axis++) {
-            newShape[axis] = shape()[ndims() - axis - 1];
+            newShape[axis] = shape().axis(ndims() - axis - 1);
             newStrides[axis] = strides[ndims() - axis - 1];
         }
-        return new Matrix(data(), newShape, newStrides);
+        return new Matrix(data(), new Shape(newShape), newStrides);
     }
 
     public Scalar det() {
-        if (Arrays.equals(shape(), new int[]{2, 2})) {
+        if (shape().equals(2, 2)) {
             return new Scalar(data()[0] * data()[3] - data()[1] * data()[2]);
         } else {
             return null;
         }
     }
 
-    public Matrix inv() {
-        if (Arrays.equals(shape(), new int[]{2, 2})) {
-            return det().pow(-1).mul(new Matrix(new double[][]{
-                    new double[]{data()[3], -data()[1]},
-                    new double[]{-data()[2], data()[0]}
-            }));
+    private int rowOp(int rowPos, int colPos, int pivotRowPos) {
+        double factor = get(rowPos, colPos) / get(pivotRowPos, colPos);
+        int numUpdated = 0;
+
+        for (int col = 0; col < shape().axis(1); col++) {
+            double updated = get(rowPos, col) - factor * get(pivotRowPos, col);
+            if (col < colPos && get(rowPos, col) == 0 && updated != 0) {
+                for (int rCol = 0; rCol <= numUpdated; rCol++) {
+                    set(new int[]{rowPos, rCol}, 0);
+                }
+                return rowPos;
+            } else {
+                set(new int[]{rowPos, col}, updated);
+                numUpdated++;
+            }
+        }
+        return pivotRowPos;
+    }
+
+    public Matrix ref() {
+        Matrix newMatrix = new Matrix(this);
+        for (int col = 0; col < newMatrix.shape().axis(1); col++) {
+            int pivotRowPos = -1;
+            for (int row = 0; row < newMatrix.shape().axis(0); row++) {
+                double currElem = newMatrix.get(row, col);
+                if (currElem != 0 && pivotRowPos == -1) {
+                    pivotRowPos = row;
+                } else if (currElem != 0) {
+                    pivotRowPos = newMatrix.rowOp(row, col, pivotRowPos);
+                }
+            }
+        }
+        return newMatrix;
+    }
+
+    public Matrix inv() throws UnsupportedOperationException {
+        if (!isSquare()) {
+            throw new UnsupportedOperationException("matrix must be square to be invertible");
+        }
+        if (shape().equals(2, 2)) {
+            return det().pow(-1).mul(
+                    new Matrix(new double[][]{
+                        new double[]{data()[3], -data()[1]},
+                        new double[]{-data()[2], data()[0]}
+                    })
+            );
         } else {
             return null;
         }
@@ -234,9 +274,9 @@ public class Matrix extends LinAlgObj {
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder("[");
-        for (int i = 0; i < shape()[0]; i++) {
-            for (int j = 0; j < shape()[1]; j++) {
-                result.append(" ").append(get(i, j)).append(" ");
+        for (int i = 0; i < shape().axis(0); i++) {
+            for (int j = 0; j < shape().axis(1); j++) {
+                result.append(" ").append(String.format("%." + PRINT_PRECISION + "f", get(i, j))).append(" ");
             }
             result.append("\n");
         }
