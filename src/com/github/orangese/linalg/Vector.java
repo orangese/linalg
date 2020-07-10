@@ -10,9 +10,11 @@ public class Vector extends Matrix {
         super(data, shape);
     }
 
-    public Vector(double[][] data) throws IllegalArgumentException {
+    public Vector(double[][] data) {
         super(data);
-        checkShape(data);
+        if (data.length != 1 && data[0].length != 1) {
+            throw new IllegalArgumentException("Vector must be n x 1 or 1 x n");
+        }
     }
 
     public Vector(Vector other) {
@@ -21,12 +23,6 @@ public class Vector extends Matrix {
 
     public Vector(Matrix other) {
         super(other.data(), other.shape(), other.strides());
-    }
-
-    private void checkShape(double[][] data) {
-        if (data.length != 1 && data[0].length != 1) {
-            throw new IllegalArgumentException("Vector must be n x 1 or 1 x n");
-        }
     }
 
     @Override
@@ -50,7 +46,7 @@ public class Vector extends Matrix {
     }
 
     public Scalar dot(Vector other) {
-        checkAddShapes(other); // add shape requirements == dot prod shape requirements
+        checkAddShapes(other, "dot product"); // add shape requirements == dot prod shape requirements
         double prod = 0;
         for (int i = 0; i < data().length; i++) {
             prod += data()[i] * other.data()[i];

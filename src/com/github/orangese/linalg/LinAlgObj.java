@@ -28,9 +28,9 @@ public abstract class LinAlgObj {
         return shape().length;
     }
 
-    protected abstract void checkAddShapes(LinAlgObj other) throws UnsupportedOperationException;
+    protected abstract void checkAddShapes(LinAlgObj other, String op);
 
-    protected abstract void checkMulShapes(LinAlgObj other) throws UnsupportedOperationException;
+    protected abstract void checkMulShapes(LinAlgObj other, String op);
 
     public abstract <T extends LinAlgObj> LinAlgObj add(T other);
 

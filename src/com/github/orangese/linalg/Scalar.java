@@ -9,14 +9,12 @@ public class Scalar extends LinAlgObj {
         this.setShape(new Shape());
     }
 
-    public Scalar(LinAlgObj other) throws UnsupportedOperationException {
+    public Scalar(LinAlgObj other) {
         int[] ones = new int[other.ndims()];
         Arrays.fill(ones, 1);
 
         if (other.ndims() != 0 && !other.shape().equals(ones)) {
-            throw new UnsupportedOperationException(
-                    "cannot instantiate Scalar from LinAlgObj with shape " + other.shape()
-            );
+            throw new IllegalArgumentException("cannot instantiate Scalar from LinAlgObj with shape " + other.shape());
         }
 
         this.setData(other.data());
@@ -32,28 +30,28 @@ public class Scalar extends LinAlgObj {
     }
 
     @Override
-    protected void checkAddShapes(LinAlgObj other) throws UnsupportedOperationException {
+    protected void checkAddShapes(LinAlgObj other, String op) {
         if (other.ndims() != 0) {
-            throw new UnsupportedOperationException(
-                    "cannot perform requested operation on scalar and non-scalar with shape " + other.shape()
-            );
+            throw new IllegalArgumentException(String.format(
+                    "cannot perform %s on scalar and non-scalar with shape %s", op, other.shape()
+            ));
         }
     }
 
     @Override
-    protected void checkMulShapes(LinAlgObj other) throws UnsupportedOperationException {
-        checkAddShapes(other);
+    protected void checkMulShapes(LinAlgObj other, String op) {
+        checkAddShapes(other, op);
     }
 
     @Override
     public <T extends LinAlgObj> Scalar add(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "scalar addition");
         return new Scalar(val() + ((Scalar) other).val());
     }
 
     @Override
     public <T extends LinAlgObj> Scalar subtract(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "scalar subtraction");
         return new Scalar(val() + ((Scalar) other).val());
     }
 
@@ -77,19 +75,19 @@ public class Scalar extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> void iadd(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "scalar addition");
         data()[0] += ((Scalar) other).val();
     }
 
     @Override
     public <T extends LinAlgObj> void isubtract(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "scalar subtraction");
         data()[0] -= ((Scalar) other).val();
     }
 
     @Override
     public <T extends LinAlgObj> void imul(T other) {
-        checkMulShapes(other);
+        checkMulShapes(other, "scalar multiplication");
         data()[0] *= ((Scalar) other).val();
     }
 

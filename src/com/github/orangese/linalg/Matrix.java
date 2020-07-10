@@ -19,13 +19,12 @@ public class Matrix extends LinAlgObj {
         this.setShape(shape());
     }
 
-    public Matrix(double[][] data) throws IllegalArgumentException {
+    public Matrix(double[][] data) {
         this.setData(new double[data.length * data[0].length]);
         for (int axis = 0; axis < data.length; axis++) {
             if (data[axis].length != data[0].length) {
                 throw new IllegalArgumentException(String.format(
-                        "dim %d along axis %d != dim %d along axis 0",
-                        data[axis].length, axis, data[0].length
+                        "dim %d along axis %d != dim %d along axis 0", data[axis].length, axis, data[0].length
                 ));
             }
             System.arraycopy(data[axis], 0, this.data(), data[axis].length * axis, data[axis].length);
@@ -68,7 +67,7 @@ public class Matrix extends LinAlgObj {
         return strides;
     }
 
-    private int getStrided(int... idxs) throws IllegalArgumentException {
+    private int getStrided(int... idxs) {
         if (idxs.length == 0) {
             throw new IllegalArgumentException("idxs must contain at least one idx");
         } else if (idxs.length != ndims()) {
@@ -110,18 +109,20 @@ public class Matrix extends LinAlgObj {
         return true;
     }
 
-    protected void checkAddShapes(LinAlgObj other) throws UnsupportedOperationException {
+    @Override
+    protected void checkAddShapes(LinAlgObj other, String op) {
         if (!shape().equals(other.shape())) {
-            throw new UnsupportedOperationException(String.format(
-                "cannot perform requested operation between shapes %s and %s", shape(), other.shape()
+            throw new IllegalArgumentException(String.format(
+                "cannot perform %s between shapes %s and %s", op, shape(), other.shape()
             ));
         }
     }
 
-    protected void checkMulShapes(LinAlgObj other) throws UnsupportedOperationException {
+    @Override
+    protected void checkMulShapes(LinAlgObj other, String op) {
         if (other.ndims() > 0 && shape().axis(ndims() - 1) != other.shape().axis(0)) {
-            throw new UnsupportedOperationException(String.format(
-                "cannot perform multiplication between shapes %s and %s", shape(), other.shape()
+            throw new IllegalArgumentException(String.format(
+                "cannot perform %s between shapes %s and %s", op, shape(), other.shape()
             ));
         }
     }
@@ -141,7 +142,7 @@ public class Matrix extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> Matrix add(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "matrix addition");
         double[] newData = new double[data().length];
         for (int i = 0; i < data().length; i++) {
             newData[i] = data()[i] + other.data()[i];
@@ -151,7 +152,7 @@ public class Matrix extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> Matrix subtract(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "matrix subtraction");
         double[] newData = new double[data().length];
         for (int i = 0; i < data().length; i++) {
             newData[i] = data()[i] - other.data()[i];
@@ -161,7 +162,7 @@ public class Matrix extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> Matrix mul(T other) {
-        checkMulShapes(other);
+        checkMulShapes(other, "matrix multiplication");
         if (other.ndims() == 0) {
             // scalar multiplication is communative
             return (Matrix) (other.mul(this));
@@ -174,7 +175,7 @@ public class Matrix extends LinAlgObj {
 
     @Override
     public Matrix pow(Scalar scalar) {
-        checkAddShapes(this);
+        checkAddShapes(this, "matrix power");
         Matrix newMatrix = new Matrix(new double[data().length]);
         imatPow2x2(scalar, newMatrix);
         return newMatrix;
@@ -182,7 +183,7 @@ public class Matrix extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> void iadd(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "matrix addition");
         for (int i = 0; i < data().length; i++) {
             data()[i] += other.data()[i];
         }
@@ -190,7 +191,7 @@ public class Matrix extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> void isubtract(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "matrix subtraction");
         for (int i = 0; i < data().length; i++) {
             data()[i] -= other.data()[i];
         }
@@ -198,13 +199,13 @@ public class Matrix extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> void imul(T other) {
-        checkAddShapes(other);
+        checkAddShapes(other, "matrix multiplication");
         imatMul2x2((Matrix) other, this);
     }
 
     @Override
     public void ipow(Scalar scalar) {
-        checkAddShapes(this);
+        checkAddShapes(this, "matrix power");
         imatPow2x2(scalar, this);
     }
 
@@ -261,7 +262,7 @@ public class Matrix extends LinAlgObj {
         return newMatrix;
     }
 
-    public Matrix inv() throws UnsupportedOperationException {
+    public Matrix inv() {
         if (!isSquare()) {
             throw new UnsupportedOperationException("matrix must be square to be invertible");
         }
