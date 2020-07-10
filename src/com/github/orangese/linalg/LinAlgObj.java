@@ -1,6 +1,7 @@
 package com.github.orangese.linalg;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 public abstract class LinAlgObj {
 
@@ -46,6 +47,24 @@ public abstract class LinAlgObj {
     public abstract <T extends LinAlgObj> void imul(T other);
 
     public abstract void ipow(Scalar scalar);
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        } if (!(other instanceof LinAlgObj)) {
+            return false;
+        }
+        LinAlgObj otherLinAlgObj = (LinAlgObj) other;
+        return Arrays.equals(data, otherLinAlgObj.data) && shape.equals(otherLinAlgObj.shape);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(shape);
+        result = 31 * result + Arrays.hashCode(data);
+        return result;
+    }
 
     @Override
     public String toString() {

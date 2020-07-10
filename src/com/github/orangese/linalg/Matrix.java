@@ -1,5 +1,7 @@
 package com.github.orangese.linalg;
 
+import java.util.Arrays;
+
 public class Matrix extends LinAlgObj {
 
     public static int PRINT_PRECISION = 3;
@@ -273,6 +275,18 @@ public class Matrix extends LinAlgObj {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        } if (!(o instanceof Matrix)) {
+            return false;
+        } if (!super.equals(o)) {
+            return false;
+        }
+        return Arrays.equals(strides, ((Matrix) o).strides);
     }
 
     @Override
