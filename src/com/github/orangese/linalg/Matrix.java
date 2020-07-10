@@ -127,18 +127,17 @@ public class Matrix extends LinAlgObj {
         }
     }
 
-    private void imatMul2x2(Matrix b, Matrix newMatrix) {
+    private void imatMul2Axis(Matrix mat, Matrix newMatrix) {
         for (int i = 0; i < shape().axis(0); i++) {
-            for (int j = 0; j < b.shape().axis(1); j++) {
+            for (int j = 0; j < mat.shape().axis(1); j++) {
                 for (int k = 0; k < shape().axis(1); k++) {
-                    int[] idxs = new int[]{i, j};
-                    newMatrix.set(idxs, newMatrix.get(idxs) + get(i, k) * b.get(k, j));
+                    newMatrix.set(new int[]{i, j}, newMatrix.get(i, j) + get(i, k) * mat.get(k, j));
                 }
             }
         }
     }
 
-    private void imatPow2x2(Scalar scalar, Matrix newMatrix) { }
+    private void imatPow2Axis(Scalar scalar, Matrix newMatrix) { }
 
     @Override
     public <T extends LinAlgObj> Matrix add(T other) {
@@ -168,7 +167,7 @@ public class Matrix extends LinAlgObj {
             return (Matrix) (other.mul(this));
         } else {
             Matrix newMatrix = new Matrix(new double[shape().axis(0)][other.shape().axis(other.ndims() - 1)]);
-            imatMul2x2((Matrix) other, newMatrix);
+            imatMul2Axis((Matrix) other, newMatrix);
             return newMatrix;
         }
     }
@@ -177,7 +176,7 @@ public class Matrix extends LinAlgObj {
     public Matrix pow(Scalar scalar) {
         checkAddShapes(this, "matrix power");
         Matrix newMatrix = new Matrix(new double[data().length]);
-        imatPow2x2(scalar, newMatrix);
+        imatPow2Axis(scalar, newMatrix);
         return newMatrix;
     }
 
@@ -200,13 +199,13 @@ public class Matrix extends LinAlgObj {
     @Override
     public <T extends LinAlgObj> void imul(T other) {
         checkAddShapes(other, "matrix multiplication");
-        imatMul2x2((Matrix) other, this);
+        imatMul2Axis((Matrix) other, this);
     }
 
     @Override
     public void ipow(Scalar scalar) {
         checkAddShapes(this, "matrix power");
-        imatPow2x2(scalar, this);
+        imatPow2Axis(scalar, this);
     }
 
     public Matrix transpose() {
