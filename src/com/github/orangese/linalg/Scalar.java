@@ -1,9 +1,25 @@
 package com.github.orangese.linalg;
 
+import java.util.Arrays;
+
 public class Scalar extends LinAlgObj {
 
     public Scalar(double val) {
         this.setData(new double[]{val});
+        this.setShape(new Shape());
+    }
+
+    public Scalar(LinAlgObj other) throws UnsupportedOperationException {
+        int[] ones = new int[other.ndims()];
+        Arrays.fill(ones, 1);
+
+        if (other.ndims() != 0 && !other.shape().equals(ones)) {
+            throw new UnsupportedOperationException(
+                    "cannot instantiate Scalar from LinAlgObj with shape " + other.shape()
+            );
+        }
+
+        this.setData(other.data());
         this.setShape(new Shape());
     }
 
@@ -19,7 +35,7 @@ public class Scalar extends LinAlgObj {
     protected void checkAddShapes(LinAlgObj other) throws UnsupportedOperationException {
         if (other.ndims() != 0) {
             throw new UnsupportedOperationException(
-                    "cannot perform requested operation on scalar and non-scalar with ndims " + other.ndims()
+                    "cannot perform requested operation on scalar and non-scalar with shape " + other.shape()
             );
         }
     }

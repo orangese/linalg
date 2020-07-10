@@ -5,7 +5,7 @@ public class Matrix extends LinAlgObj {
     public static int PRINT_PRECISION = 3;
     private int[] strides;
 
-    public Matrix(double[] data) {
+    public Matrix(double... data) {
         this.setData(new double[data.length]);
         System.arraycopy(data, 0, this.data(), 0, data.length);
         this.setShape(new Shape(1, data.length));
@@ -41,7 +41,7 @@ public class Matrix extends LinAlgObj {
         System.arraycopy(other.strides, 0, strides, 0, other.strides.length);
     }
 
-    private Matrix(double[] data, Shape shape, int[] strides) {
+    protected Matrix(double[] data, Shape shape, int[] strides) {
         // used internally to create transposes, which are views
         this.setData(data);
         this.setShape(shape);
@@ -60,6 +60,10 @@ public class Matrix extends LinAlgObj {
             this.strides[i] = currStride;
         }
         super.setShape(shape);
+    }
+
+    public int[] strides() {
+        return strides;
     }
 
     private int getStrided(int... idxs) throws IllegalArgumentException {
@@ -107,7 +111,7 @@ public class Matrix extends LinAlgObj {
     protected void checkAddShapes(LinAlgObj other) throws UnsupportedOperationException {
         if (!shape().equals(other.shape())) {
             throw new UnsupportedOperationException(String.format(
-                "shape %s does not match shape %s for addition/subtraction", shape(), other.shape()
+                "cannot perform requested operation between shapes %s and %s", shape(), other.shape()
             ));
         }
     }
@@ -115,7 +119,7 @@ public class Matrix extends LinAlgObj {
     protected void checkMulShapes(LinAlgObj other) throws UnsupportedOperationException {
         if (other.ndims() > 0 && shape().axis(ndims() - 1) != other.shape().axis(0)) {
             throw new UnsupportedOperationException(String.format(
-                "shape %s does not match shape %s for multiplication", shape(), other.shape()
+                "cannot perform multiplication between shapes %s and %s", shape(), other.shape()
             ));
         }
     }
@@ -154,11 +158,11 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    public <T extends LinAlgObj> LinAlgObj mul(T other) {
+    public <T extends LinAlgObj> Matrix mul(T other) {
         checkMulShapes(other);
         if (other.ndims() == 0) {
             // scalar multiplication is communative
-            return other.mul(this);
+            return (Matrix) (other.mul(this));
         } else {
             Matrix newMatrix = new Matrix(new double[shape().axis(0)][other.shape().axis(other.ndims() - 1)]);
             imatMul2x2((Matrix) other, newMatrix);
@@ -167,7 +171,7 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    public LinAlgObj pow(Scalar scalar) {
+    public Matrix pow(Scalar scalar) {
         checkAddShapes(this);
         Matrix newMatrix = new Matrix(new double[data().length]);
         imatPow2x2(scalar, newMatrix);
