@@ -140,6 +140,14 @@ public class Scalar extends LinAlgObj {
         idiv(new Scalar(other));
     }
 
+    public static boolean isClose(Scalar a, Scalar b) {
+        return isClose(a.val(), b.val());
+    }
+
+    public static boolean isClose(double a, double b) {
+        return Math.abs(a - b) <= Math.max(1e-09 * Math.max(Math.abs(a), Math.abs(b)), Matrix.EPS);
+    }
+
     @Override
     public String toString() {
         return String.valueOf(this.val());

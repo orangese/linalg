@@ -1,22 +1,38 @@
 package com.github.orangese.linalg;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Matrix extends LinAlgObj {
 
-    public static int PRINT_PRECISION = 3;
+    public final static double EPS = 1e-6;
+    private static int PRINT_PRECISION = 3;
     private int[] strides;
+    private DecompCache decompCache;
+
+    public Matrix(Shape shape) {
+        this.setData(new double[size()]);
+        this.setShapeAndStrides(shape);
+        this.decompCache = new DecompCache();
+    }
+
+    public Matrix(Shape shape, double fillVal) {
+        this(shape);
+        Arrays.fill(data(), fillVal);
+    }
 
     public Matrix(double... data) {
         this.setData(new double[data.length]);
         System.arraycopy(data, 0, this.data(), 0, data.length);
-        this.setShape(new Shape(1, data.length));
+        this.setShapeAndStrides(new Shape(1, data.length));
+        this.decompCache = new DecompCache();
     }
 
     public Matrix(double[] data, Shape shape) {
         this(data);
         System.arraycopy(shape.toArray(), 0, this.shape().toArray(), 0, shape.length);
-        this.setShape(shape());
+        this.setShapeAndStrides(shape());
     }
 
     public Matrix(double[][] data) {
@@ -29,29 +45,31 @@ public class Matrix extends LinAlgObj {
             }
             System.arraycopy(data[axis], 0, this.data(), data[axis].length * axis, data[axis].length);
         }
-        this.setShape(new Shape(data.length, this.data().length / data.length));
+        this.setShapeAndStrides(new Shape(data.length, this.data().length / data.length));
+        this.decompCache = new DecompCache();
     }
 
     public Matrix(Matrix other) {
         setData(new double[other.data().length]);
         System.arraycopy(other.data(), 0, data(), 0, other.data().length);
 
-        setShape(new Shape(other.shape()));
+        setShapeAndStrides(new Shape(other.shape()));
 
         strides = new int[other.strides.length];
         System.arraycopy(other.strides, 0, strides, 0, other.strides.length);
+
+        decompCache = new DecompCache(other.decompCache);
     }
 
-    protected Matrix(double[] data, Shape shape, int[] strides) {
+    protected Matrix(double[] data, Shape shape, int[] strides, DecompCache decompCache) {
         // used internally to create transposes, which are views
         this.setData(data);
-        this.setShape(shape);
+        this.setShapeAndStrides(shape);
         this.strides = strides;
+        this.decompCache = decompCache;
     }
 
-    @Override
-    protected void setShape(Shape shape) {
-        // strides/indexing written generally in case tensor support is added later
+    protected void setShapeAndStrides(Shape shape) {
         strides = new int[shape.length];
         int currStride = 1;
         for (int i = shape.length - 1; i >= 0; i--) {
@@ -215,7 +233,7 @@ public class Matrix extends LinAlgObj {
             newShape[axis] = shape().axis(ndims() - axis - 1);
             newStrides[axis] = strides[ndims() - axis - 1];
         }
-        return new Matrix(data(), new Shape(newShape), newStrides);
+        return new Matrix(data(), new Shape(newShape), newStrides, decompCache);
     }
 
     public Scalar det() {
@@ -247,18 +265,24 @@ public class Matrix extends LinAlgObj {
 
     public Matrix ref() {
         Matrix newMatrix = new Matrix(this);
-        for (int col = 0; col < newMatrix.shape().axis(1); col++) {
-            int pivotRowPos = -1;
-            for (int row = 0; row < newMatrix.shape().axis(0); row++) {
+        for (int col = 0; col < shape().axis(1); col++) {
+            int pivotRow = -1;
+            for (int row = col; row < shape().axis(0); row++) {
                 double currElem = newMatrix.get(row, col);
-                if (currElem != 0 && pivotRowPos == -1) {
-                    pivotRowPos = row;
-                } else if (currElem != 0) {
-                    pivotRowPos = newMatrix.rowOp(row, col, pivotRowPos);
+                if (!Scalar.isClose(currElem,0) && pivotRow == -1) {
+                    pivotRow = row;
+                    decompCache.addPivot(pivotRow);
+                    newMatrix.decompCache.addPivot(pivotRow);
+                } else if (!Scalar.isClose(currElem, 0)) {
+                    pivotRow = newMatrix.rowOp(row, col, pivotRow);
                 }
             }
         }
         return newMatrix;
+    }
+
+    public int[] pivots() {
+        return decompCache.getPivots().stream().mapToInt(x -> x).toArray();
     }
 
     public Matrix inv() {
@@ -275,6 +299,47 @@ public class Matrix extends LinAlgObj {
         } else {
             return null;
         }
+    }
+
+    public static int getPrintPrecision() {
+        return PRINT_PRECISION;
+    }
+
+    public static void setPrintPrecision(int printPrecision) {
+        if (printPrecision <= 0) {
+            throw new IllegalArgumentException("printPrecision must be an int greater than 0");
+        }
+        PRINT_PRECISION = printPrecision;
+    }
+
+    public static Matrix eye(Shape shape, int offset) {
+        if (shape.length != 2) {
+            throw new IllegalArgumentException("cannot instantiate identity matrix with number of axis != 2");
+        }
+
+        double[] data = new double[shape.size()];
+        int dataOffset = 0;
+
+        for (int i = 0; i < data.length; i++) {
+            if (i == dataOffset + offset) {
+                data[i] = 1;
+                dataOffset += shape.axis(1) + 1;
+            }
+        }
+
+        return new Matrix(data, shape);
+    }
+
+    public static Matrix eye(Shape shape) {
+        return eye(shape, 0);
+    }
+
+    public static Matrix eye(int n, int m, int offset) {
+        return eye(new Shape(n, m), offset);
+    }
+
+    public static Matrix eye(int n, int m) {
+        return eye(new Shape(n, m), 0);
     }
 
     @Override
@@ -300,6 +365,55 @@ public class Matrix extends LinAlgObj {
         }
         result.setLength(result.length() - 1);
         return result.append("]").toString();
+    }
+
+}
+
+class DecompCache {
+
+    private Set<Integer> pivots;
+    private Matrix elimMatrix;
+    private Matrix rref;
+
+    public DecompCache() {
+        clear();
+    }
+
+    public DecompCache(DecompCache other) {
+        pivots = new HashSet<>(other.pivots);
+        // elimMatrix and rref will only be edited via re-assignment to a new Matrix reference, so not copying is okay
+        elimMatrix = other.elimMatrix;
+        rref = other.rref;
+    }
+
+    public void clear() {
+        pivots = new HashSet<>();
+        elimMatrix = null;
+        rref = null;
+    }
+
+    public void addPivot(int pivot) {
+        pivots.add(pivot);
+    }
+
+    public Set<Integer> getPivots() {
+        return pivots;
+    }
+
+    public void setElimMatrix(Matrix elimMatrix) {
+        this.elimMatrix = elimMatrix;
+    }
+
+    public Matrix getElimMatrix() {
+        return elimMatrix;
+    }
+
+    public void setRref(Matrix rref) {
+        this.rref = rref;
+    }
+
+    public Matrix getRref() {
+        return rref;
     }
 
 }
