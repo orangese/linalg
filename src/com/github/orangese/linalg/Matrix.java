@@ -6,10 +6,10 @@ import java.util.Set;
 
 public class Matrix extends LinAlgObj {
 
-    public final static double EPS = 1e-6;
+    public final static double EPS = 1e-6;  // only works if precision < 1e-6
     private static int PRINT_PRECISION = 3;
     private int[] strides;
-    private DecompCache decompCache;
+    private final DecompCache decompCache;
 
     public Matrix(Shape shape) {
         this.setData(new double[size()]);
@@ -244,38 +244,61 @@ public class Matrix extends LinAlgObj {
         }
     }
 
-    private int rowOp(int rowPos, int colPos, int pivotRowPos) {
-        double factor = get(rowPos, colPos) / get(pivotRowPos, colPos);
+    private void rowOp(int rowPos, int colPos, int pivotRowPos) {
+        final double factor = get(rowPos, colPos) / get(pivotRowPos, colPos);
         int numUpdated = 0;
-
         for (int col = 0; col < shape().axis(1); col++) {
             double updated = get(rowPos, col) - factor * get(pivotRowPos, col);
             if (col < colPos && get(rowPos, col) == 0 && updated != 0) {
                 for (int rCol = 0; rCol <= numUpdated; rCol++) {
                     set(new int[]{rowPos, rCol}, 0);
                 }
-                return rowPos;
+                break;
             } else {
                 set(new int[]{rowPos, col}, updated);
                 numUpdated++;
             }
         }
-        return pivotRowPos;
+    }
+
+    private void swapRows(int rowA, int rowB) {
+        double[] tmp = new double[shape().axis(1)];
+        System.arraycopy(data(), getStrided(rowA, 0), tmp, 0, tmp.length);
+
+        System.arraycopy(data(), getStrided(rowB, 0), data(), getStrided(rowA, 0), tmp.length);
+        System.arraycopy(tmp, 0, data(), getStrided(rowB, 0), tmp.length);
     }
 
     public Matrix ref() {
         Matrix newMatrix = new Matrix(this);
         for (int col = 0; col < shape().axis(1); col++) {
             int pivotRow = -1;
+            int zeroRow = -1;
+
             for (int row = col; row < shape().axis(0); row++) {
                 double currElem = newMatrix.get(row, col);
-                if (!Scalar.isClose(currElem,0) && pivotRow == -1) {
-                    pivotRow = row;
-                    decompCache.addPivot(pivotRow);
-                    newMatrix.decompCache.addPivot(pivotRow);
-                } else if (!Scalar.isClose(currElem, 0)) {
-                    pivotRow = newMatrix.rowOp(row, col, pivotRow);
+
+                if (Scalar.isNonZero(currElem)) {
+                    if (pivotRow == -1) {
+                        pivotRow = row;
+                    } else {
+                        newMatrix.rowOp(row, col, pivotRow);
+                        zeroRow = row;
+                    }
+                    if (zeroRow != -1) {
+                        if (pivotRow == row) {
+                            pivotRow = zeroRow;
+                        }
+                        newMatrix.swapRows(zeroRow, row);
+                        zeroRow = row;
+                    }
                 }
+                if (zeroRow == -1) {
+                    zeroRow = row;
+                }
+
+                decompCache.addPivot(pivotRow);
+                newMatrix.decompCache.addPivot(pivotRow);
             }
         }
         return newMatrix;
@@ -373,7 +396,8 @@ class DecompCache {
 
     private Set<Integer> pivots;
     private Matrix elimMatrix;
-    private Matrix rref;
+    private Matrix permMatrix;
+    private Matrix ref;
 
     public DecompCache() {
         clear();
@@ -381,19 +405,24 @@ class DecompCache {
 
     public DecompCache(DecompCache other) {
         pivots = new HashSet<>(other.pivots);
-        // elimMatrix and rref will only be edited via re-assignment to a new Matrix reference, so not copying is okay
+        // elimMatrix, permMatrix, and ref will only be edited via re-assignment to a new Matrix reference,
+        // so not copying them is okay
         elimMatrix = other.elimMatrix;
-        rref = other.rref;
+        permMatrix = other.permMatrix;
+        ref = other.ref;
     }
 
     public void clear() {
         pivots = new HashSet<>();
         elimMatrix = null;
-        rref = null;
+        permMatrix = null;
+        ref = null;
     }
 
     public void addPivot(int pivot) {
-        pivots.add(pivot);
+        if (pivot != -1) {
+            pivots.add(pivot);
+        }
     }
 
     public Set<Integer> getPivots() {
@@ -408,12 +437,20 @@ class DecompCache {
         return elimMatrix;
     }
 
-    public void setRref(Matrix rref) {
-        this.rref = rref;
+    public void setPermMatrix(Matrix permMatrix) {
+        this.permMatrix = permMatrix;
     }
 
-    public Matrix getRref() {
-        return rref;
+    public Matrix getPermMatrix() {
+        return permMatrix;
+    }
+
+    public void setRef(Matrix ref) {
+        this.ref = ref;
+    }
+
+    public Matrix getRef() {
+        return ref;
     }
 
 }
