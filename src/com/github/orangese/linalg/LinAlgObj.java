@@ -7,6 +7,7 @@ public abstract class LinAlgObj {
 
     private double[] data;
     private Shape shape;
+    private int size;
 
     protected void setData(double[] data) {
         this.data = data;
@@ -18,6 +19,7 @@ public abstract class LinAlgObj {
 
     protected void setShape(Shape shape) {
         this.shape = shape;
+        this.size = shape.size();
     }
 
     public Shape shape() {
@@ -26,6 +28,10 @@ public abstract class LinAlgObj {
 
     public int ndims() {
         return shape().length;
+    }
+
+    public int size() {
+        return size;
     }
 
     protected abstract void checkAddShapes(LinAlgObj other, String op);
@@ -64,14 +70,6 @@ public abstract class LinAlgObj {
         int result = Objects.hash(shape);
         result = 31 * result + Arrays.hashCode(data);
         return result;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + "{" +
-                "data=" + Arrays.toString(data()) +
-                ", shape=" + shape() +
-                '}';
     }
 
 }

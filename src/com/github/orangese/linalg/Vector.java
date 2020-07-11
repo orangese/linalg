@@ -17,12 +17,8 @@ public class Vector extends Matrix {
         }
     }
 
-    public Vector(Vector other) {
-        super(other);
-    }
-
     public Vector(Matrix other) {
-        super(other.data(), other.shape(), other.strides());
+        super(other);
     }
 
     @Override

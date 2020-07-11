@@ -27,6 +27,14 @@ public class Shape {
         return shape;
     }
 
+    public int size() {
+        int prod = 1;
+        for (int subShape : shape) {
+            prod *= subShape;
+        }
+        return prod;
+    }
+
     public boolean equals(int... other) {
         return equals(new Shape(other));
     }
