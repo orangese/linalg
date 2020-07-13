@@ -126,10 +126,6 @@ public class Scalar extends LinAlgObj {
         idiv(new Scalar(other));
     }
 
-    protected static boolean isNonZero(double a) {
-        return Math.abs(a) > Math.max(1e-09 * Math.abs(a), Matrix.EPS);
-    }
-
     @Override
     public String toString() {
         return String.valueOf(this.val());

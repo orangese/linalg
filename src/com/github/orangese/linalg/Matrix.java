@@ -1,21 +1,16 @@
 package com.github.orangese.linalg;
 
-import com.github.orangese.linalg.decomp.LUPDecomp;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 public class Matrix extends LinAlgObj {
 
-    public final static double EPS = 1e-10;  // only works if precision < 1e-6
     private static int PRINT_PRECISION = 3;
-    private final DecompCache decompCache;
 
     public Matrix(Shape shape) {
         this.setData(new double[shape.size()]);
         this.setShape(shape);
-        this.decompCache = new DecompCache();
     }
 
     public Matrix(Shape shape, double fillVal) {
@@ -27,7 +22,6 @@ public class Matrix extends LinAlgObj {
         this.setData(new double[data.length]);
         System.arraycopy(data, 0, this.data(), 0, data.length);
         this.setShape(new Shape(1, data.length));
-        this.decompCache = new DecompCache();
     }
 
     public Matrix(double[] data, Shape shape) {
@@ -46,23 +40,20 @@ public class Matrix extends LinAlgObj {
             System.arraycopy(data[axis], 0, this.data(), data[axis].length * axis, data[axis].length);
         }
         this.setShape(new Shape(data.length, data[0].length));
-        this.decompCache = new DecompCache();
     }
 
     public Matrix(Matrix other) {
         setData(new double[other.data().length]);
         System.arraycopy(other.data(), 0, data(), 0, other.data().length);
         setShape(new Shape(other.shape()));
-        decompCache = new DecompCache(other.decompCache);
     }
 
     protected Matrix(double[] data, Shape shape, boolean view) {
         this.setData(data);
         this.setShape(shape);
-        this.decompCache = null;  // decomp(A) != decomp(A^T)
     }
 
-    private int getStrided(int row, int col) {
+    protected int getStrided(int row, int col) {
         if (row < -rowDim() || row >= rowDim()) {
             throw new ArrayIndexOutOfBoundsException(String.format(
                     "index %d out of range for axis %d of length %d", row, 0, rowDim()
@@ -88,7 +79,6 @@ public class Matrix extends LinAlgObj {
 
     public void set(int row, int col, double newVal) {
         setKeepCache(row, col, newVal);
-        decompCache.clear();
     }
 
     private void setKeepCache(int row, int col, double newVal) {
@@ -210,90 +200,8 @@ public class Matrix extends LinAlgObj {
         }
     }
 
-    private double backwardSolveLUP(int i, int j) {
-        double sum = get(i, j);
-        for (int k = 0; k < Math.min(i, j); k++) {
-            sum -= get(i, k) * get(k, j);
-        }
-        setKeepCache(i, j, sum);
-        return sum;
-    }
-
-    private LUPDecomp decompLUP(String mode) {
-        if (!isSquare()) {
-            throw new UnsupportedOperationException("nonsquare LU decomp not yet implemented");
-        }
-
-        Matrix decomp = new Matrix(this);
-
-        int[] permutations = null;
-        if (!mode.equals("lu")) {
-            permutations = new int[rowDim()];
-            for (int i = 0; i < permutations.length; i++) {
-                permutations[i] = i;
-            }
-        }
-
-        for (int j = 0; j < colDim(); j++) {
-            for (int i = 0; i < j; i++) {
-                decomp.backwardSolveLUP(i, j);
-            }
-
-            int max = j;
-            double largest = Double.NEGATIVE_INFINITY;
-            for (int i = j; i < rowDim(); i++) {
-                double sum = decomp.backwardSolveLUP(i, j);
-                if (mode.contains("lu") && Math.abs(sum) > largest) {
-                    largest = Math.abs(sum);
-                    max = i;
-                }
-            }
-
-            if (Math.abs(decomp.get(max, j)) < EPS) {
-                throw new ArithmeticException("matrix is singular");
-            }
-
-            if (permutations != null && max != j) {
-                double[] tmpArr = new double[colDim()];
-                int len = tmpArr.length;
-
-                System.arraycopy(decomp.data(), getStrided(max, 0), tmpArr, 0, len);
-                System.arraycopy(decomp.data(), getStrided(j, 0), decomp.data(), getStrided(max, 0), len);
-                System.arraycopy(tmpArr, 0, decomp.data(), getStrided(j, 0), len);
-
-                int tmp = permutations[max];
-                permutations[max] = permutations[j];
-                permutations[j] = tmp;
-            }
-
-            double diag = decomp.get(j, j);
-            for (int i = j + 1; i < rowDim(); i++) {
-                decomp.setKeepCache(i, j, decomp.get(i, j) / diag);
-            }
-
-        }
-        return new LUPDecomp(decomp, permutations);
-    }
-
-    public LUPDecomp decompLUP() {
-        if (!decompCache.computedLUP()) {
-            decompCache.setLUPDecomp(decompLUP("lup"));
-        }
-        return decompCache.getLUDecompCopy();
-    }
-
     public Matrix ref() {
-        if (!decompCache.computedLUP()) {
-            decompCache.setLUPDecomp(decompLUP("ref"));
-        }
-        return decompCache.getLUDecompView().U();
-    }
-
-    public int[] pivots() {
-        if (!decompCache.computedPivots()) {
-            decompCache.setLUPDecomp(decompLUP("lup"));
-        }
-        return decompCache.getPivots().stream().mapToInt(x -> x).toArray();
+        return new LUPDecomp(this, true).U();
     }
 
     public Matrix inv() {
@@ -373,57 +281,4 @@ public class Matrix extends LinAlgObj {
         return result.append("]").toString();
     }
 
-}
-
-class DecompCache {
-
-    private Set<Integer> pivots;
-    private LUPDecomp luDecomp;
-
-    public DecompCache() {
-        clear();
-    }
-
-    public DecompCache(DecompCache other) {
-        pivots = other.pivots == null ? null : new HashSet<>(other.pivots);
-        // lupDecomp will only be edited via re-assignment to a new Matrix reference, so not copying is okay
-        luDecomp = other.luDecomp;
-    }
-
-    public void clear() {
-        pivots = null;
-        luDecomp = null;
-    }
-
-    public void addPivot(int pivot) {
-        if (pivots == null) {
-            pivots = new HashSet<>();
-        } if (pivot != -1) {
-            pivots.add(pivot);
-        }
-    }
-
-    public Set<Integer> getPivots() {
-        return pivots;
-    }
-
-    public void setLUPDecomp(LUPDecomp luDecomp) {
-        this.luDecomp = luDecomp;
-    }
-
-    public LUPDecomp getLUDecompView() {
-        return luDecomp;
-    }
-
-    public LUPDecomp getLUDecompCopy() {
-        return luDecomp.deepcopy();
-    }
-
-    public boolean computedLUP() {
-        return luDecomp != null;
-    }
-
-    public boolean computedPivots() {
-        return pivots != null && !pivots.isEmpty();
-    }
 }
