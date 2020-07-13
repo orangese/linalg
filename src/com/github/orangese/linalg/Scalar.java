@@ -1,23 +1,9 @@
 package com.github.orangese.linalg;
 
-import java.util.Arrays;
-
 public class Scalar extends LinAlgObj {
 
     public Scalar(double val) {
         this.setData(new double[]{val});
-        this.setShape(new Shape());
-    }
-
-    public Scalar(LinAlgObj other) {
-        int[] ones = new int[other.ndims()];
-        Arrays.fill(ones, 1);
-
-        if (other.ndims() != 0 && !other.shape().equals(ones)) {
-            throw new IllegalArgumentException("cannot instantiate Scalar from LinAlgObj with shape " + other.shape());
-        }
-
-        this.setData(other.data());
         this.setShape(new Shape());
     }
 
@@ -57,8 +43,8 @@ public class Scalar extends LinAlgObj {
 
     @Override
     public <T extends LinAlgObj> T mul(T other) {
-        double[] newData = new double[other.data().length];
-        for (int i = 0; i < other.data().length; i++) {
+        double[] newData = new double[other.size()];
+        for (int i = 0; i < other.size(); i++) {
             newData[i] = other.data()[i] * val();
         }
         return (T) (newData.length > 1 ? new Matrix(newData, other.shape()) : new Scalar(newData[0]));
@@ -76,28 +62,28 @@ public class Scalar extends LinAlgObj {
     @Override
     public <T extends LinAlgObj> void iadd(T other) {
         checkAddShapes(other, "scalar addition");
-        data()[0] += ((Scalar) other).val();
+        set(val() + ((Scalar) other).val());
     }
 
     @Override
     public <T extends LinAlgObj> void isubtract(T other) {
         checkAddShapes(other, "scalar subtraction");
-        data()[0] -= ((Scalar) other).val();
+        set(val() - ((Scalar) other).val());
     }
 
     @Override
     public <T extends LinAlgObj> void imul(T other) {
         checkMulShapes(other, "scalar multiplication");
-        data()[0] *= ((Scalar) other).val();
+        set(val() * ((Scalar) other).val());
     }
 
     @Override
     public void ipow(Scalar scalar) {
-        data()[0] = Math.pow(data()[0], scalar.val());
+        set(Math.pow(val(), scalar.val()));
     }
 
     public void idiv(Scalar other) {
-        data()[0] /= other.val();
+        set(val() / other.val());
     }
 
     public Scalar add(double other) {

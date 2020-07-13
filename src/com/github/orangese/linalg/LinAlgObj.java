@@ -7,7 +7,6 @@ public abstract class LinAlgObj {
 
     private double[] data;
     private Shape shape;
-    private int size;
 
     protected void setData(double[] data) {
         this.data = data;
@@ -19,19 +18,26 @@ public abstract class LinAlgObj {
 
     protected void setShape(Shape shape) {
         this.shape = shape;
-        this.size = shape.size();
     }
 
     public Shape shape() {
         return shape;
     }
 
+    public int rowDim() {
+        return shape.rowDim();
+    }
+
+    public int colDim() {
+        return shape.colDim();
+    }
+
     public int ndims() {
-        return shape().length;
+        return shape.ndims();
     }
 
     public int size() {
-        return size;
+        return shape.size();
     }
 
     protected abstract void checkAddShapes(LinAlgObj other, String op);

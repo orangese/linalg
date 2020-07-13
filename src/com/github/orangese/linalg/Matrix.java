@@ -5,18 +5,18 @@ import com.github.orangese.linalg.decomp.LUPDecomp;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class Matrix extends LinAlgObj {
 
     public final static double EPS = 1e-6;  // only works if precision < 1e-6
     private static int PRINT_PRECISION = 3;
-    private int[] strides;
     private final DecompCache decompCache;
 
     public Matrix(Shape shape) {
         this.setData(new double[size()]);
-        this.setShapeAndStrides(shape);
+        this.setShape(shape);
         this.decompCache = new DecompCache();
     }
 
@@ -28,14 +28,13 @@ public class Matrix extends LinAlgObj {
     public Matrix(double... data) {
         this.setData(new double[data.length]);
         System.arraycopy(data, 0, this.data(), 0, data.length);
-        this.setShapeAndStrides(new Shape(1, data.length));
+        this.setShape(new Shape(1, data.length));
         this.decompCache = new DecompCache();
     }
 
     public Matrix(double[] data, Shape shape) {
         this(data);
-        System.arraycopy(shape.toArray(), 0, this.shape().toArray(), 0, shape.length);
-        this.setShapeAndStrides(shape());
+        this.setShape(shape);
     }
 
     public Matrix(double[][] data) {
@@ -48,90 +47,58 @@ public class Matrix extends LinAlgObj {
             }
             System.arraycopy(data[axis], 0, this.data(), data[axis].length * axis, data[axis].length);
         }
-        this.setShapeAndStrides(new Shape(data.length, this.data().length / data.length));
+        this.setShape(new Shape(data.length, data[0].length));
         this.decompCache = new DecompCache();
     }
 
     public Matrix(Matrix other) {
         setData(new double[other.data().length]);
         System.arraycopy(other.data(), 0, data(), 0, other.data().length);
-
-        setShapeAndStrides(new Shape(other.shape()));
-
-        strides = new int[other.strides.length];
-        System.arraycopy(other.strides, 0, strides, 0, other.strides.length);
-
+        setShape(new Shape(other.shape()));
         decompCache = new DecompCache(other.decompCache);
     }
 
-    protected Matrix(double[] data, Shape shape, int[] strides, DecompCache decompCache) {
+    protected Matrix(double[] data, Shape shape, boolean view) {
         this.setData(data);
-        this.setShapeAndStrides(shape);
-        this.strides = strides;
-        this.decompCache = decompCache;
+        this.setShape(shape);
+        this.decompCache = null;  // decomp(A) != decomp(A^T)
     }
 
-    protected void setShapeAndStrides(Shape shape) {
-        strides = new int[shape.length];
-        int currStride = 1;
-        for (int i = shape.length - 1; i >= 0; i--) {
-            if (i != shape.length - 1) {
-                currStride *= shape.axis(i + 1);
-            }
-            this.strides[i] = currStride;
-        }
-        super.setShape(shape);
-    }
-
-    public int[] strides() {
-        return strides;
-    }
-
-    private int getStrided(int... idxs) {
-        if (idxs.length == 0) {
-            throw new IllegalArgumentException("idxs must contain at least one idx");
-        } else if (idxs.length != ndims()) {
-            throw new IllegalArgumentException("indices length does not match ndims");
+    private int getStrided(int row, int col) {
+        if (row < -rowDim() || row >= rowDim()) {
+            throw new ArrayIndexOutOfBoundsException(String.format(
+                    "index %d out of range for axis %d of length %d", row, 0, rowDim()
+            ));
+        } else if (col < -colDim() || col >= colDim()) {
+            throw new ArrayIndexOutOfBoundsException(String.format(
+                    "index %d out of range for axis %d of length %d", col, 1, colDim()
+            ));
         }
 
-        int strided = 0;
-        for (int axis = 0; axis < ndims(); axis++) {
-            int currIdx = idxs[axis];
-
-            if (currIdx < -shape().axis(axis) || currIdx >= shape().axis(axis)) {
-                throw new ArrayIndexOutOfBoundsException(String.format(
-                        "index %d out of range for axis %d of length %d", currIdx, axis, shape().axis(axis)
-                ));
-            } if (currIdx < 0) {
-                // negative indexes are supported
-                currIdx += shape().axis(axis);
-            }
-            strided += currIdx * strides[axis];
+        // negative indexes are supported
+        if (row < 0) {
+            row += rowDim();
+        } if (col < 0) {
+            col += colDim();
         }
-        return strided;
+        return row * colDim() + col;
     }
 
-    public double get(int... idxs) {
-        return data()[getStrided(idxs)];
+    public double get(int row, int col) {
+        return data()[getStrided(row, col)];
     }
 
-    public void set(int[] idxs, double newVal) {
-        data()[getStrided(idxs)] = newVal;
+    public void set(int row, int col, double newVal) {
+        data()[getStrided(row, col)] = newVal;
         decompCache.clear();
     }
 
-    private void setKeepCache(int[] idxs, double newVal) {
-        data()[getStrided(idxs)] = newVal;
+    private void setKeepCache(int row, int col, double newVal) {
+        data()[getStrided(row, col)] = newVal;
     }
 
     public boolean isSquare() {
-        int refShape = shape().axis(0);
-        for (int axis = 0; axis < shape().length; axis++) {
-            if (refShape != shape().axis(axis)) {
-                return false;
-            }
-        }
-        return true;
+        return rowDim() == colDim();
     }
 
     @Override
@@ -145,7 +112,7 @@ public class Matrix extends LinAlgObj {
 
     @Override
     protected void checkMulShapes(LinAlgObj other, String op) {
-        if (other.ndims() > 0 && shape().axis(ndims() - 1) != other.shape().axis(0)) {
+        if (other.ndims() > 0 && colDim() != other.rowDim()) {
             throw new IllegalArgumentException(String.format(
                 "cannot perform %s between shapes %s and %s", op, shape(), other.shape()
             ));
@@ -153,10 +120,10 @@ public class Matrix extends LinAlgObj {
     }
 
     private void imatMul2Axis(Matrix mat, Matrix newMatrix) {
-        for (int i = 0; i < shape().axis(0); i++) {
-            for (int j = 0; j < mat.shape().axis(1); j++) {
-                for (int k = 0; k < shape().axis(1); k++) {
-                    newMatrix.setKeepCache(new int[]{i, j}, newMatrix.get(i, j) + get(i, k) * mat.get(k, j));
+        for (int i = 0; i < rowDim(); i++) {
+            for (int j = 0; j < mat.colDim(); j++) {
+                for (int k = 0; k < colDim(); k++) {
+                    newMatrix.setKeepCache(i, j, newMatrix.get(i, j) + get(i, k) * mat.get(k, j));
                 }
             }
         }
@@ -191,7 +158,7 @@ public class Matrix extends LinAlgObj {
             // scalar multiplication is communative
             return (Matrix) (other.mul(this));
         } else {
-            Matrix newMatrix = new Matrix(new double[shape().axis(0)][other.shape().axis(other.ndims() - 1)]);
+            Matrix newMatrix = new Matrix(new double[rowDim()][other.colDim()]);
             imatMul2Axis((Matrix) other, newMatrix);
             return newMatrix;
         }
@@ -234,13 +201,7 @@ public class Matrix extends LinAlgObj {
     }
 
     public Matrix transpose() {
-        int[] newShape = new int[ndims()];
-        int[] newStrides = new int[ndims()];
-        for (int axis = 0; axis < ndims(); axis++) {
-            newShape[axis] = shape().axis(ndims() - axis - 1);
-            newStrides[axis] = strides[ndims() - axis - 1];
-        }
-        return new Matrix(data(), new Shape(newShape), newStrides, decompCache);
+        return new Matrix(data(), new Shape(colDim(), rowDim()), true);
     }
 
     public Scalar det() {
@@ -251,85 +212,89 @@ public class Matrix extends LinAlgObj {
         }
     }
 
-    private void rowOp(int rowPos, int colPos, int pivotRowPos, Matrix elimMatrixInv) {
-        final double factor = get(rowPos, colPos) / get(pivotRowPos, colPos);
-
-        int[] elimPos = new int[]{rowPos, pivotRowPos};
-        double elimRollBack = 0;
-        if (elimMatrixInv != null) {
-            elimRollBack = elimMatrixInv.get(elimPos);
-            elimMatrixInv.set(elimPos, elimRollBack + factor);
-        }
-
-        int numUpdated = 0;
-        for (int col = 0; col < shape().axis(1); col++) {
-            double updated = get(rowPos, col) - factor * get(pivotRowPos, col);
-
-            if (col < colPos && get(rowPos, col) == 0 && updated != 0) {
-                // roll back changes if row op isn't valid
-                if (elimMatrixInv != null) {
-                    elimMatrixInv.set(elimPos, elimRollBack);
-                } for (int rCol = 0; rCol <= numUpdated; rCol++) {
-                    setKeepCache(new int[]{rowPos, rCol}, 0);
-                }
-                break;
-            } else {
-                setKeepCache(new int[]{rowPos, col}, updated);
-                numUpdated++;
-            }
-        }
+    private LUDecomp LUPDecompBackend(String mode) {
+        return null;
     }
 
-    private void swapRows(int rowA, int rowB) {
-        double[] tmp = new double[shape().axis(1)];
-        System.arraycopy(data(), getStrided(rowA, 0), tmp, 0, tmp.length);
-
-        System.arraycopy(data(), getStrided(rowB, 0), data(), getStrided(rowA, 0), tmp.length);
-        System.arraycopy(tmp, 0, data(), getStrided(rowB, 0), tmp.length);
-    }
-
-    private LUPDecomp LUPDecompBackend(String mode) {
-        Matrix ref = new Matrix(this);
-
-        Matrix permMatrix = mode.contains("lu") ? Matrix.eye(shape()) : null;
-        Matrix elimMatrixInv = mode.contains("lu") ? Matrix.eye(shape()) : null;
-
-        for (int col = 0; col < shape().axis(1); col++) {
-            int pivotRow = -1;
-            int zeroRow = -1;
-
-            for (int row = col; row < shape().axis(0); row++) {
-                double currElem = ref.get(row, col);
-
-                if (Scalar.isNonZero(currElem)) {
-                    if (pivotRow == -1) {
-                        pivotRow = row;
-                    } else {
-                        ref.rowOp(row, col, pivotRow, elimMatrixInv);
-                        zeroRow = row;
-                    } if (zeroRow != -1) {
-                        if (mode.equals("lu")) {
-                            throw new UnsupportedOperationException("permutation not allowed in LU decomposition");
-                        } if (pivotRow == row) {
-                            pivotRow = zeroRow;
-                        } if (permMatrix != null) {
-                            permMatrix.swapRows(zeroRow, row);
-                        }
-                        ref.swapRows(zeroRow, row);
-                        zeroRow = row;
-                    }
-                } if (zeroRow == -1) {
-                    zeroRow = row;
-                }
-
-                decompCache.addPivot(pivotRow);
-                if (elimMatrixInv != null) {
-                    elimMatrixInv.decompCache.addPivot(pivotRow);
-                }
-            }
-        }
-        return new LUPDecomp(permMatrix, elimMatrixInv, ref);
-    }
+//    private void rowOp(int rowPos, int colPos, int pivotRowPos, Matrix elimMatrixInv) {
+//        final double factor = get(rowPos, colPos) / get(pivotRowPos, colPos);
+//
+//        int[] elimPos = new int[]{rowPos, pivotRowPos};
+//        double elimRollBack = 0;
+//        if (elimMatrixInv != null) {
+//            elimRollBack = elimMatrixInv.get(elimPos);
+//            elimMatrixInv.set(elimPos, elimRollBack + factor);
+//        }
+//
+//        int numUpdated = 0;
+//        for (int col = 0; col < shape().axis(1); col++) {
+//            double updated = get(rowPos, col) - factor * get(pivotRowPos, col);
+//
+//            if (col < colPos && get(rowPos, col) == 0 && updated != 0) {
+//                // roll back changes if row op isn't valid
+//                if (elimMatrixInv != null) {
+//                    elimMatrixInv.set(elimPos, elimRollBack);
+//                } for (int rCol = 0; rCol <= numUpdated; rCol++) {
+//                    setKeepCache(new int[]{rowPos, rCol}, 0);
+//                }
+//                break;
+//            } else {
+//                setKeepCache(new int[]{rowPos, col}, updated);
+//                numUpdated++;
+//            }
+//        }
+//    }
+//
+//    private void swapRows(int rowA, int rowB) {
+//        double[] tmp = new double[shape().axis(1)];
+//        System.arraycopy(data(), getStrided(rowA, 0), tmp, 0, tmp.length);
+//
+//        System.arraycopy(data(), getStrided(rowB, 0), data(), getStrided(rowA, 0), tmp.length);
+//        System.arraycopy(tmp, 0, data(), getStrided(rowB, 0), tmp.length);
+//    }
+//
+//    private LUPDecomp LUPDecompBackend(String mode) {
+//        Matrix ref = new Matrix(this);
+//
+//        Matrix permMatrix = mode.contains("lu") ? Matrix.eye(shape()) : null;
+//        Matrix elimMatrixInv = mode.contains("lu") ? Matrix.eye(shape()) : null;
+//
+//        for (int col = 0; col < shape().axis(1); col++) {
+//            int pivotRow = -1;
+//            int zeroRow = -1;
+//
+//            for (int row = col; row < shape().axis(0); row++) {
+//                double currElem = ref.get(row, col);
+//
+//                if (Scalar.isNonZero(currElem)) {
+//                    if (pivotRow == -1) {
+//                        pivotRow = row;
+//                    } else {
+//                        ref.rowOp(row, col, pivotRow, elimMatrixInv);
+//                        zeroRow = row;
+//                    } if (zeroRow != -1) {
+//                        if (mode.equals("lu")) {
+//                            throw new UnsupportedOperationException("permutation not allowed in LU decomposition");
+//                        } if (pivotRow == row) {
+//                            pivotRow = zeroRow;
+//                        } if (permMatrix != null) {
+//                            permMatrix.swapRows(zeroRow, row);
+//                        }
+//                        ref.swapRows(zeroRow, row);
+//                        zeroRow = row;
+//                    }
+//                } if (zeroRow == -1) {
+//                    zeroRow = row;
+//                }
+//
+//                decompCache.addPivot(pivotRow);
+//                if (elimMatrixInv != null) {
+//                    elimMatrixInv.decompCache.addPivot(pivotRow);
+//                }
+//            }
+//        }
+//        return new LUPDecomp(permMatrix, elimMatrixInv, ref);
+//    }
 
     public LUDecomp LUDecomp() {
         if (!decompCache.computedLUP()) {
@@ -375,6 +340,13 @@ public class Matrix extends LinAlgObj {
         }
     }
 
+    public Scalar item() {
+        if (ndims() != 0 && !shape().equals(1, 1)) {
+            throw new IllegalArgumentException("cannot instantiate Scalar from LinAlgObj with shape " + shape());
+        }
+        return new Scalar(get(0, 0));
+    }
+
     public static int getPrintPrecision() {
         return PRINT_PRECISION;
     }
@@ -387,7 +359,7 @@ public class Matrix extends LinAlgObj {
     }
 
     public static Matrix eye(Shape shape, int offset) {
-        if (shape.length != 2) {
+        if (shape.ndims() != 2) {
             throw new IllegalArgumentException("cannot instantiate identity matrix with number of axis != 2");
         }
 
@@ -397,7 +369,7 @@ public class Matrix extends LinAlgObj {
         for (int i = 0; i < data.length; i++) {
             if (i == dataOffset + offset) {
                 data[i] = 1;
-                dataOffset += shape.axis(1) + 1;
+                dataOffset += shape.colDim() + 1;
             }
         }
 
@@ -417,22 +389,23 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
+    public boolean equals(Object other) {
+        if (this == other) {
             return true;
-        } if (!(o instanceof Matrix)) {
+        } if (!(other instanceof Matrix)) {
             return false;
-        } if (!super.equals(o)) {
+        } if (!super.equals(other)) {
             return false;
         }
-        return Arrays.equals(strides, ((Matrix) o).strides);
+        Matrix otherMatrix = (Matrix) other;
+        return Objects.equals(decompCache, otherMatrix.decompCache);
     }
 
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder("[");
-        for (int i = 0; i < shape().axis(0); i++) {
-            for (int j = 0; j < shape().axis(1); j++) {
+        for (int i = 0; i < rowDim(); i++) {
+            for (int j = 0; j < colDim(); j++) {
                 result.append(" ").append(String.format("%." + PRINT_PRECISION + "f", get(i, j))).append(" ");
             }
             result.append("\n");

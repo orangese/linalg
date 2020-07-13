@@ -1,69 +1,64 @@
 package com.github.orangese.linalg;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 public class Shape {
 
-    private final int[] shape;
-    public final int length;
+    private final int rowDim;
+    private final int colDim;
 
-    public Shape(int... shape) {
-        this.shape = shape;
-        this.length = shape.length;
+    public Shape() {
+        this(0, 0);
+    }
+
+    public Shape(int rowDim, int colDim) {
+        this.rowDim = rowDim;
+        this.colDim = colDim;
     }
 
     public Shape(Shape shape) {
-        this.shape = new int[shape.length];
-        this.length = shape.length;
-        System.arraycopy(shape.shape, 0, this.shape, 0, length);
+        this.rowDim = shape.rowDim;
+        this.colDim = shape.colDim;
     }
 
-    public int axis(int axis) {
-        return shape[axis];
+    public int rowDim() {
+        return rowDim;
     }
 
-    public int[] toArray() {
-        return shape;
+    public int colDim() {
+        return colDim;
     }
 
     public int size() {
-        int prod = 1;
-        for (int subShape : shape) {
-            prod *= subShape;
-        }
-        return prod;
+        return rowDim * colDim;
     }
 
-    public boolean equals(int... other) {
-        return equals(new Shape(other));
+    public int ndims() {
+        return (this.rowDim == 0 ? 0: 1) + (this.colDim == 0 ? 0: 1);
+    }
+
+    public boolean equals(int rowDim, int colDim) {
+        return equals(new Shape(rowDim, colDim));
     }
 
     @Override
     public boolean equals(Object other) {
         if (this == other) {
             return true;
-        } if (other == null || getClass() != other.getClass()) {
+        } if (!(other instanceof Shape)) {
             return false;
         }
         Shape otherShape = (Shape) other;
-        return length == otherShape.length && Arrays.equals(shape, otherShape.shape);
+        return rowDim == otherShape.rowDim && colDim == otherShape.colDim;
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(length);
-        result = 31 * result + Arrays.hashCode(shape);
-        return result;
+        return Objects.hash(rowDim, colDim);
     }
 
     public String toString() {
-        StringBuilder result = new StringBuilder("(");
-        for (int subShape : shape) {
-            result.append(subShape).append(", ");
-        }
-        result.setLength(result.length() - 2);
-        return result.append(")").toString();
+        return "(" + rowDim + ", " + colDim + ")";
     }
 
 }

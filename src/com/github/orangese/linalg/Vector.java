@@ -21,6 +21,18 @@ public class Vector extends Matrix {
         super(other);
     }
 
+    public Vector(double[] data, Shape shape, boolean view) {
+        super(data, shape, view);
+    }
+
+    public double get(int idx) {
+        return data()[idx];
+    }
+
+    public void set(int idx, double newVal) {
+        data()[idx] = newVal;
+    }
+
     @Override
     public <T extends LinAlgObj> Matrix add(T other) {
         return new Vector(super.add(other));
@@ -38,14 +50,14 @@ public class Vector extends Matrix {
 
     @Override
     public Vector transpose() {
-        return new Vector(super.transpose());
+        return new Vector(super.transpose().data(), new Shape(colDim(), rowDim()), true);
     }
 
     public Scalar dot(Vector other) {
         checkAddShapes(other, "dot product"); // add shape requirements == dot prod shape requirements
         double prod = 0;
         for (int i = 0; i < data().length; i++) {
-            prod += data()[i] * other.data()[i];
+            prod += get(i) * other.get(i);
         }
         return new Scalar(prod);
     }
