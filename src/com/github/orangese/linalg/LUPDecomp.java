@@ -10,10 +10,6 @@ public class LUPDecomp {
     private Matrix perm;
 
     public LUPDecomp(Matrix mat) {
-        this(mat, false);
-    }
-
-    protected LUPDecomp(Matrix mat, boolean ref) {
         if (!mat.isSquare()) {
             throw new UnsupportedOperationException("nonsquare LU decomp not yet implemented");
         }
@@ -21,10 +17,8 @@ public class LUPDecomp {
         decomp = new Matrix(mat);
 
         permArray = new int[mat.rowDim()];
-        if (!ref) {
-            for (int i = 0; i < permArray.length; i++) {
-                permArray[i] = i;
-            }
+        for (int i = 0; i < permArray.length; i++) {
+            permArray[i] = i;
         }
 
         for (int j = 0; j < mat.colDim(); j++) {
@@ -33,14 +27,12 @@ public class LUPDecomp {
             }
 
             int max = j;
-            if (!ref) {
-                double largest = Double.NEGATIVE_INFINITY;
-                for (int i = j; i < decomp.rowDim(); i++) {
-                    double sum = backwardSolve(i, j, decomp);
-                    if (Math.abs(sum) > largest) {
-                        largest = Math.abs(sum);
-                        max = i;
-                    }
+            double largest = Double.NEGATIVE_INFINITY;
+            for (int i = j; i < decomp.rowDim(); i++) {
+                double sum = backwardSolve(i, j, decomp);
+                if (Math.abs(sum) > largest) {
+                    largest = Math.abs(sum);
+                    max = i;
                 }
             }
 
@@ -48,7 +40,7 @@ public class LUPDecomp {
                 throw new ArithmeticException("matrix is singular");
             }
 
-            if (!ref && max != j) {
+            if (max != j) {
                 double[] tmpArr = new double[decomp.colDim()];
 
                 System.arraycopy(decomp.data(), decomp.getStrided(max, 0), tmpArr, 0, tmpArr.length);
@@ -93,7 +85,7 @@ public class LUPDecomp {
     public Matrix U() {
         if (upper == null) {
             upper = new Matrix(decomp.shape());
-            for (int j = 0; j < lower.colDim(); j++) {
+            for (int j = 0; j < upper.colDim(); j++) {
                 for (int i = 0; i < j + 1; i++) {
                     upper.set(i, j, decomp.get(i, j));
                 }

@@ -1,8 +1,6 @@
 package com.github.orangese.linalg;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 public class Matrix extends LinAlgObj {
 
@@ -201,7 +199,7 @@ public class Matrix extends LinAlgObj {
     }
 
     public Matrix ref() {
-        return new LUPDecomp(this, true).U();
+        return new LUPDecomp(this).U();
     }
 
     public Matrix inv() {
