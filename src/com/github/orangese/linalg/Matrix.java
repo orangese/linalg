@@ -76,10 +76,6 @@ public class Matrix extends LinAlgObj {
     }
 
     public void set(int row, int col, double newVal) {
-        setKeepCache(row, col, newVal);
-    }
-
-    private void setKeepCache(int row, int col, double newVal) {
         data()[getStrided(row, col)] = newVal;
     }
 
@@ -109,7 +105,7 @@ public class Matrix extends LinAlgObj {
         for (int i = 0; i < rowDim(); i++) {
             for (int j = 0; j < mat.colDim(); j++) {
                 for (int k = 0; k < colDim(); k++) {
-                    newMatrix.setKeepCache(i, j, newMatrix.get(i, j) + get(i, k) * mat.get(k, j));
+                    newMatrix.set(i, j, newMatrix.get(i, j) + get(i, k) * mat.get(k, j));
                 }
             }
         }

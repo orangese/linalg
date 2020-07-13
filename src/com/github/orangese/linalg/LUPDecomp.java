@@ -23,13 +23,13 @@ public class LUPDecomp {
 
         for (int j = 0; j < mat.colDim(); j++) {
             for (int i = 0; i < j; i++) {
-                backwardSolve(i, j, decomp);
+                backwardSolve(i, j);
             }
 
             int max = j;
             double largest = Double.NEGATIVE_INFINITY;
             for (int i = j; i < decomp.rowDim(); i++) {
-                double sum = backwardSolve(i, j, decomp);
+                double sum = backwardSolve(i, j);
                 if (Math.abs(sum) > largest) {
                     largest = Math.abs(sum);
                     max = i;
@@ -60,12 +60,12 @@ public class LUPDecomp {
         }
     }
 
-    private double backwardSolve(int i, int j, Matrix mat) {
-        double sum = mat.get(i, j);
+    private double backwardSolve(int i, int j) {
+        double sum = decomp.get(i, j);
         for (int k = 0; k < Math.min(i, j); k++) {
-            sum -= mat.get(i, k) * mat.get(k, j);
+            sum -= decomp.get(i, k) * decomp.get(k, j);
         }
-        mat.set(i, j, sum);
+        decomp.set(i, j, sum);
         return sum;
     }
 
