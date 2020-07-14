@@ -10,10 +10,6 @@ public class LUPDecomp {
     private Matrix perm;
 
     public LUPDecomp(Matrix mat) {
-        if (!mat.isSquare()) {
-            throw new UnsupportedOperationException("nonsquare LU decomp not yet implemented");
-        }
-
         decomp = new Matrix(mat);
 
         permArray = new int[mat.rowDim()];
@@ -36,11 +32,7 @@ public class LUPDecomp {
                 }
             }
 
-            if (Math.abs(decomp.get(max, j)) < EPS) {
-                throw new ArithmeticException("matrix is singular");
-            }
-
-            if (max != j) {
+            if (max != j || j < mat.rowDim() && Math.abs(decomp.get(max, j)) < EPS) {
                 double[] tmpArr = new double[decomp.colDim()];
 
                 System.arraycopy(decomp.data(), decomp.getStrided(max, 0), tmpArr, 0, tmpArr.length);
@@ -53,9 +45,11 @@ public class LUPDecomp {
                 permArray[j] = tmp;
             }
 
-            double diag = decomp.get(j, j);
-            for (int i = j + 1; i < decomp.rowDim(); i++) {
-                decomp.set(i, j, decomp.get(i, j) / diag);
+            if (j < mat.rowDim() && j < mat.colDim()) {
+                double diag = decomp.get(j, j);
+                for (int i = j + 1; i < decomp.rowDim(); i++) {
+                    decomp.set(i, j, decomp.get(i, j) / diag);
+                }
             }
         }
     }
@@ -71,7 +65,7 @@ public class LUPDecomp {
 
     public Matrix L() {
         if (lower == null) {
-            lower = new Matrix(decomp.shape());
+            lower = new Matrix(new Shape(decomp.rowDim(), decomp.rowDim()));
             for (int j = 0; j < lower.colDim(); j++) {
                 for (int i = j; i < lower.rowDim(); i++) {
                     lower.set(i, j, decomp.get(i, j));
@@ -86,7 +80,7 @@ public class LUPDecomp {
         if (upper == null) {
             upper = new Matrix(decomp.shape());
             for (int j = 0; j < upper.colDim(); j++) {
-                for (int i = 0; i < j + 1; i++) {
+                for (int i = 0; i < Math.min(j + 1, upper.rowDim()); i++) {
                     upper.set(i, j, decomp.get(i, j));
                 }
             }
@@ -106,7 +100,7 @@ public class LUPDecomp {
 
     @Override
     public String toString() {
-        return super.toString() + "\nP: " + P();
+        return "L: " + L() + "\nU: " + U() + "\nP: " + P();
     }
 
 }
