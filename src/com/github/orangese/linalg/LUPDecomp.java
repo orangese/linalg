@@ -8,10 +8,12 @@ public class LUPDecomp {
     private Matrix lower;
     private Matrix upper;
     private Matrix perm;
+    private int numPermutations;
 
     public LUPDecomp(Matrix mat) {
         decomp = new Matrix(mat);
 
+        numPermutations = 0;
         permArray = new int[mat.rowDim()];
         for (int i = 0; i < permArray.length; i++) {
             permArray[i] = i;
@@ -43,6 +45,8 @@ public class LUPDecomp {
                 int tmp = permArray[max];
                 permArray[max] = permArray[j];
                 permArray[j] = tmp;
+
+                numPermutations++;
             }
 
             if (j < mat.rowDim() && j < mat.colDim()) {
@@ -96,6 +100,10 @@ public class LUPDecomp {
             }
         }
         return perm;
+    }
+
+    protected int getNumPermutations() {
+        return numPermutations;
     }
 
     @Override

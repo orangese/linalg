@@ -1,6 +1,8 @@
 package com.github.orangese.linalg;
 
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Matrix extends LinAlgObj {
 
@@ -101,11 +103,12 @@ public class Matrix extends LinAlgObj {
         }
     }
 
-    private void imatMul2Axis(Matrix mat, Matrix newMatrix) {
-        for (int i = 0; i < rowDim(); i++) {
-            for (int j = 0; j < mat.colDim(); j++) {
-                for (int k = 0; k < colDim(); k++) {
-                    newMatrix.set(i, j, newMatrix.get(i, j) + get(i, k) * mat.get(k, j));
+    private void imatMul2Axis(Matrix mat, Matrix newMatrix, boolean reverseOrder) {
+        for (int i = 0; i < (reverseOrder ? mat.rowDim() : rowDim()); i++) {
+            for (int j = 0; j < (reverseOrder ? colDim() : mat.colDim()); j++) {
+                for (int k = 0; k < (reverseOrder ? mat.colDim() : colDim()); k++) {
+                    double prod = reverseOrder ? mat.get(i, k) * get(k, j) : get(i, k) * mat.get(k, j);
+                    newMatrix.set(i, j, newMatrix.get(i, j) + prod);
                 }
             }
         }
@@ -141,7 +144,7 @@ public class Matrix extends LinAlgObj {
             return (Matrix) (other.mul(this));
         } else {
             Matrix newMatrix = new Matrix(new double[rowDim()][other.colDim()]);
-            imatMul2Axis((Matrix) other, newMatrix);
+            imatMul2Axis((Matrix) other, newMatrix, false);
             return newMatrix;
         }
     }
@@ -173,7 +176,7 @@ public class Matrix extends LinAlgObj {
     @Override
     public <T extends LinAlgObj> void imul(T other) {
         checkAddShapes(other, "matrix multiplication");
-        imatMul2Axis((Matrix) other, this);
+        imatMul2Axis((Matrix) other, this, true);
     }
 
     @Override
@@ -187,10 +190,15 @@ public class Matrix extends LinAlgObj {
     }
 
     public Scalar det() {
+        if (!isSquare()) {
+            throw new UnsupportedOperationException("cannot compute determinant for nonsquare matrix");
+        }
         if (shape().equals(2, 2)) {
             return new Scalar(data()[0] * data()[3] - data()[1] * data()[2]);
         } else {
-            return null;
+            LUPDecomp lupDecomp = new LUPDecomp(this);
+            double coef = Math.pow(-1, lupDecomp.getNumPermutations());
+            return lupDecomp.U().trace().mul(coef);
         }
     }
 
@@ -198,10 +206,76 @@ public class Matrix extends LinAlgObj {
         return new LUPDecomp(this).U();
     }
 
+    private Matrix rref(List<Integer> pivotCache, LUPDecomp computedDecomp) {
+        final Matrix ref = computedDecomp != null ? computedDecomp.U() : ref();
+
+        Matrix inv = null;
+        if (computedDecomp != null) {
+            computedDecomp.L().imul(computedDecomp.P());
+            System.out.println("EEEEE" + computedDecomp.L());
+            inv = computedDecomp.L();
+        }
+
+        int prevPivotPos = -1;
+        for (int j = 0; j < colDim(); j++) {
+            boolean foundPivot = false;
+
+            for (int i = Math.min(j, rowDim() - 1); i >= 0; i--) {
+                final double currElem = ref.get(i, j);
+
+                if (Math.abs(currElem) >= LUPDecomp.EPS) {
+                    if (!foundPivot && i <= prevPivotPos) {
+                        break;
+
+                    } else if (!foundPivot) {
+                        for (int k = 0; k < colDim(); k++) {
+                            ref.set(i, k, ref.get(i, k) / currElem);
+                            if (inv != null) {
+                                inv.set(i, k, inv.get(i, k) / currElem);
+                            }
+                        }
+                        prevPivotPos = i;
+                        foundPivot = true;
+
+                        if (pivotCache != null) {
+                            pivotCache.add(i);
+                        }
+
+                    } else {
+                        final double factor = ref.get(i, j);
+                        for (int k = j; k < colDim(); k++) {
+                            ref.set(i, k, ref.get(i, k) - factor * ref.get(prevPivotPos, k));
+                            if (inv != null) {
+                                inv.set(i, k, inv.get(i, k) - factor * inv.get(prevPivotPos, k));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return ref;
+    }
+
+    public Matrix rref() {
+        return rref( null, null);
+    }
+
+    public int rank() {
+        return pivotPos().size();
+    }
+
+    public List<Integer> pivotPos() {
+        List<Integer> pivots = new ArrayList<>();
+        rref(pivots, null);
+        return pivots;
+    }
+
     public Matrix inv() {
         if (!isSquare()) {
-            throw new UnsupportedOperationException("matrix must be square to be invertible");
+            throw new UnsupportedOperationException("cannot compute inverse of nonsquare matrix");
         }
+
         if (shape().equals(2, 2)) {
             return det().pow(-1).mul(
                     new Matrix(new double[][]{
@@ -210,8 +284,21 @@ public class Matrix extends LinAlgObj {
                     })
             );
         } else {
-            return null;
+            LUPDecomp lupDecomp = new LUPDecomp(this);
+            rref(null, lupDecomp);
+            return lupDecomp.L();
         }
+    }
+
+    public Scalar trace() {
+        if (!isSquare()) {
+            throw new UnsupportedOperationException("cannot compute trace for nonsquare matrix");
+        }
+        double trace = 1;
+        for (int i = 0; i < rowDim(); i++) {
+            trace *= get(i, i);
+        }
+        return new Scalar(trace);
     }
 
     public Scalar item() {

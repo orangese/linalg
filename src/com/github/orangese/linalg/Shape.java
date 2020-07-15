@@ -30,7 +30,7 @@ public class Shape {
     }
 
     public int size() {
-        return rowDim * colDim;
+        return Math.max(rowDim * colDim, 1);
     }
 
     public int ndims() {
