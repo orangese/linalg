@@ -30,24 +30,28 @@ public class Scalar extends LinAlgObj {
     }
 
     @Override
-    public <T extends LinAlgObj> Scalar add(T other) {
+    public Scalar add(LinAlgObj other) {
         checkAddShapes(other, "scalar addition");
         return new Scalar(val() + ((Scalar) other).val());
     }
 
     @Override
-    public <T extends LinAlgObj> Scalar subtract(T other) {
+    public Scalar subtract(LinAlgObj other) {
         checkAddShapes(other, "scalar subtraction");
         return new Scalar(val() + ((Scalar) other).val());
     }
 
     @Override
-    public <T extends LinAlgObj> T mul(T other) {
-        double[] newData = new double[other.size()];
-        for (int i = 0; i < other.size(); i++) {
-            newData[i] = other.data()[i] * val();
+    public Matrix mul(Matrix other) {
+        Matrix newMat = new Matrix(other.shape());
+        for (int i = 0; i < other.data().length; i++) {
+            newMat.data()[i] = val() * other.data()[i];
         }
-        return (T) (newData.length > 1 ? new Matrix(newData, other.shape()) : new Scalar(newData[0]));
+        return newMat;
+    }
+
+    public Scalar mul(Scalar other) {
+        return new Scalar(other.val() * val());
     }
 
     @Override
@@ -60,19 +64,19 @@ public class Scalar extends LinAlgObj {
     }
 
     @Override
-    public <T extends LinAlgObj> void iadd(T other) {
+    public void iadd(LinAlgObj other) {
         checkAddShapes(other, "scalar addition");
         set(val() + ((Scalar) other).val());
     }
 
     @Override
-    public <T extends LinAlgObj> void isubtract(T other) {
+    public void isubtract(LinAlgObj other) {
         checkAddShapes(other, "scalar subtraction");
         set(val() - ((Scalar) other).val());
     }
 
     @Override
-    public <T extends LinAlgObj> void imul(T other) {
+    public void imul(LinAlgObj other) {
         checkMulShapes(other, "scalar multiplication");
         set(val() * ((Scalar) other).val());
     }

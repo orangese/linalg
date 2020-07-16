@@ -44,19 +44,19 @@ public abstract class LinAlgObj {
 
     protected abstract void checkMulShapes(LinAlgObj other, String op);
 
-    public abstract <T extends LinAlgObj> LinAlgObj add(T other);
+    public abstract LinAlgObj add(LinAlgObj other);
 
-    public abstract <T extends LinAlgObj> LinAlgObj subtract(T other);
+    public abstract LinAlgObj subtract(LinAlgObj other);
 
-    public abstract <T extends LinAlgObj> LinAlgObj mul(T other);
+    public abstract LinAlgObj mul(Matrix other);
 
     public abstract LinAlgObj pow(Scalar scalar);
 
-    public abstract <T extends LinAlgObj> void iadd(T other);
+    public abstract void iadd(LinAlgObj other);
 
-    public abstract <T extends LinAlgObj> void isubtract(T other);
+    public abstract void isubtract(LinAlgObj other);
 
-    public abstract <T extends LinAlgObj> void imul(T other);
+    public abstract void imul(LinAlgObj other);
 
     public abstract void ipow(Scalar scalar);
 

@@ -33,18 +33,15 @@ public class Vector extends Matrix {
         data()[idx] = newVal;
     }
 
-    @Override
-    public <T extends LinAlgObj> Matrix add(T other) {
+    public Vector add(Vector other) {
         return new Vector(super.add(other));
     }
 
-    @Override
-    public <T extends LinAlgObj> Matrix subtract(T other) {
+    public Vector subtract(Vector other) {
         return new Vector(super.subtract(other));
     }
 
-    @Override
-    public <T extends LinAlgObj> Matrix mul(T other) {
+    public Vector mul(Vector other) {
         return new Vector(super.mul(other));
     }
 

@@ -116,34 +116,34 @@ public class Matrix extends LinAlgObj {
     private void imatPow2Axis(Scalar scalar, Matrix newMatrix) { }
 
     @Override
-    public <T extends LinAlgObj> Matrix add(T other) {
+    public Matrix add(LinAlgObj other) {
         checkAddShapes(other, "matrix addition");
-        double[] newData = new double[data().length];
+        Matrix newMat = new Matrix(shape());
         for (int i = 0; i < data().length; i++) {
-            newData[i] = data()[i] + other.data()[i];
+            newMat.data()[i] = data()[i] + other.data()[i];
         }
-        return new Matrix(newData, shape());
+        return newMat;
     }
 
     @Override
-    public <T extends LinAlgObj> Matrix subtract(T other) {
+    public Matrix subtract(LinAlgObj other) {
         checkAddShapes(other, "matrix subtraction");
-        double[] newData = new double[data().length];
+        Matrix newMat = new Matrix(shape());
         for (int i = 0; i < data().length; i++) {
-            newData[i] = data()[i] - other.data()[i];
+            newMat.data()[i] = data()[i] - other.data()[i];
         }
-        return new Matrix(newData, shape());
+        return newMat;
     }
 
     @Override
-    public <T extends LinAlgObj> Matrix mul(T other) {
+    public Matrix mul(Matrix other) {
         checkMulShapes(other, "matrix multiplication");
         if (other.ndims() == 0) {
             // scalar multiplication is communative
-            return (Matrix) (other.mul(this));
+            return other.mul(this);
         } else {
             Matrix newMatrix = new Matrix(new double[rowDim()][other.colDim()]);
-            imatMul2Axis((Matrix) other, newMatrix);
+            imatMul2Axis(other, newMatrix);
             return newMatrix;
         }
     }
@@ -157,7 +157,7 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    public <T extends LinAlgObj> void iadd(T other) {
+    public void iadd(LinAlgObj other) {
         checkAddShapes(other, "matrix addition");
         for (int i = 0; i < data().length; i++) {
             data()[i] += other.data()[i];
@@ -165,7 +165,7 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    public <T extends LinAlgObj> void isubtract(T other) {
+    public void isubtract(LinAlgObj other) {
         checkAddShapes(other, "matrix subtraction");
         for (int i = 0; i < data().length; i++) {
             data()[i] -= other.data()[i];
@@ -173,7 +173,7 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    public <T extends LinAlgObj> void imul(T other) {
+    public void imul(LinAlgObj other) {
         checkAddShapes(other, "matrix multiplication");
         Matrix tmp = new Matrix(data(), shape(), true);
         setData(new double[data().length]);
@@ -194,10 +194,10 @@ public class Matrix extends LinAlgObj {
         if (!isSquare()) {
             throw new UnsupportedOperationException("cannot compute determinant for nonsquare matrix");
         }
-        if (shape().equals(2, 2)) {
-            return new Scalar(data()[0] * data()[3] - data()[1] * data()[2]);
+        LUPDecomp lupDecomp = new LUPDecomp(this);
+        if (lupDecomp.isSingular()) {
+            return new Scalar(0);
         } else {
-            LUPDecomp lupDecomp = new LUPDecomp(this);
             double coef = Math.pow(-1, lupDecomp.getNumPermutations());
             return lupDecomp.U().trace().mul(coef);
         }
@@ -207,15 +207,8 @@ public class Matrix extends LinAlgObj {
         return new LUPDecomp(this).U();
     }
 
-    private Matrix rref(List<Integer> pivotCache, LUPDecomp computedDecomp) {
-        final Matrix ref = computedDecomp != null ? computedDecomp.U() : ref();
-
-        Matrix inv = null;
-        if (computedDecomp != null) {
-            computedDecomp.L().imul(computedDecomp.P());
-            System.out.println("EEEEE" + computedDecomp.L());
-            inv = computedDecomp.L();
-        }
+    private Matrix rref(List<Integer> pivotCache) {
+        final Matrix ref = ref();
 
         int prevPivotPos = -1;
         for (int j = 0; j < colDim(); j++) {
@@ -231,9 +224,6 @@ public class Matrix extends LinAlgObj {
                     } else if (!foundPivot) {
                         for (int k = 0; k < colDim(); k++) {
                             ref.set(i, k, ref.get(i, k) / currElem);
-                            if (inv != null) {
-                                inv.set(i, k, inv.get(i, k) / currElem);
-                            }
                         }
                         prevPivotPos = i;
                         foundPivot = true;
@@ -246,9 +236,6 @@ public class Matrix extends LinAlgObj {
                         final double factor = ref.get(i, j);
                         for (int k = j; k < colDim(); k++) {
                             ref.set(i, k, ref.get(i, k) - factor * ref.get(prevPivotPos, k));
-                            if (inv != null) {
-                                inv.set(i, k, inv.get(i, k) - factor * inv.get(prevPivotPos, k));
-                            }
                         }
                     }
                 }
@@ -259,7 +246,7 @@ public class Matrix extends LinAlgObj {
     }
 
     public Matrix rref() {
-        return rref( null, null);
+        return rref(null);
     }
 
     public int rank() {
@@ -268,7 +255,7 @@ public class Matrix extends LinAlgObj {
 
     public List<Integer> pivotPos() {
         List<Integer> pivots = new ArrayList<>();
-        rref(pivots, null);
+        rref(pivots);
         return pivots;
     }
 
@@ -276,19 +263,7 @@ public class Matrix extends LinAlgObj {
         if (!isSquare()) {
             throw new UnsupportedOperationException("cannot compute inverse of nonsquare matrix");
         }
-
-        if (shape().equals(2, 2)) {
-            return det().pow(-1).mul(
-                    new Matrix(new double[][]{
-                        new double[]{data()[3], -data()[1]},
-                        new double[]{-data()[2], data()[0]}
-                    })
-            );
-        } else {
-            LUPDecomp lupDecomp = new LUPDecomp(this);
-            rref(null, lupDecomp);
-            return lupDecomp.L();
-        }
+        return new LUPDecomp(this).solve(eye(shape()));
     }
 
     public Scalar trace() {
