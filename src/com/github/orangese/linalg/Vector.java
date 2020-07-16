@@ -3,7 +3,7 @@ package com.github.orangese.linalg;
 public class Vector extends Matrix {
 
     public Vector(double... data) {
-        super(data);
+        super(data, new Shape(data.length, 1));
     }
 
     public Vector(double[] data, Shape shape) {
@@ -18,11 +18,8 @@ public class Vector extends Matrix {
     }
 
     public Vector(Matrix other) {
-        super(other);
-    }
-
-    public Vector(double[] data, Shape shape, boolean view) {
-        super(data, shape, view);
+        setData(other.data());
+        setShape(other.shape());
     }
 
     public double get(int idx) {
@@ -47,7 +44,7 @@ public class Vector extends Matrix {
 
     @Override
     public Vector transpose() {
-        return new Vector(super.transpose().data(), new Shape(colDim(), rowDim()), true);
+        return new Vector(super.transpose());
     }
 
     public Scalar dot(Vector other) {

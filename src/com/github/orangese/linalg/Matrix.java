@@ -48,11 +48,6 @@ public class Matrix extends LinAlgObj {
         setShape(new Shape(other.shape()));
     }
 
-    protected Matrix(double[] data, Shape shape, boolean view) {
-        this.setData(data);
-        this.setShape(shape);
-    }
-
     protected int getStrided(int row, int col) {
         if (row < -rowDim() || row >= rowDim()) {
             throw new ArrayIndexOutOfBoundsException(String.format(
@@ -81,8 +76,8 @@ public class Matrix extends LinAlgObj {
         data()[getStrided(row, col)] = newVal;
     }
 
-    public boolean isSquare() {
-        return rowDim() == colDim();
+    public boolean isNotSquare() {
+        return rowDim() != colDim();
     }
 
     @Override
@@ -175,7 +170,7 @@ public class Matrix extends LinAlgObj {
     @Override
     public void imul(LinAlgObj other) {
         checkAddShapes(other, "matrix multiplication");
-        Matrix tmp = new Matrix(data(), shape(), true);
+        Matrix tmp = viewOf(this);
         setData(new double[data().length]);
         tmp.imatMul2Axis((Matrix) other, this);
     }
@@ -187,20 +182,9 @@ public class Matrix extends LinAlgObj {
     }
 
     public Matrix transpose() {
-        return new Matrix(data(), new Shape(colDim(), rowDim()), true);
-    }
-
-    public Scalar det() {
-        if (!isSquare()) {
-            throw new UnsupportedOperationException("cannot compute determinant for nonsquare matrix");
-        }
-        LUPDecomp lupDecomp = new LUPDecomp(this);
-        if (lupDecomp.isSingular()) {
-            return new Scalar(0);
-        } else {
-            double coef = Math.pow(-1, lupDecomp.getNumPermutations());
-            return lupDecomp.U().trace().mul(coef);
-        }
+        Matrix transpose = viewOf(this);
+        transpose.setShape(new Shape(colDim(), rowDim()));
+        return transpose;
     }
 
     public Matrix ref() {
@@ -260,14 +244,24 @@ public class Matrix extends LinAlgObj {
     }
 
     public Matrix inv() {
-        if (!isSquare()) {
-            throw new UnsupportedOperationException("cannot compute inverse of nonsquare matrix");
-        }
         return new LUPDecomp(this).solve(eye(shape()));
     }
 
+    public Scalar det() {
+        if (isNotSquare()) {
+            throw new UnsupportedOperationException("cannot compute determinant for nonsquare matrix");
+        }
+        LUPDecomp lupDecomp = new LUPDecomp(this);
+        if (lupDecomp.isSingular()) {
+            return new Scalar(0);
+        } else {
+            double coef = Math.pow(-1, lupDecomp.getNumPermutations());
+            return lupDecomp.U().trace().mul(coef);
+        }
+    }
+
     public Scalar trace() {
-        if (!isSquare()) {
+        if (isNotSquare()) {
             throw new UnsupportedOperationException("cannot compute trace for nonsquare matrix");
         }
         double trace = 1;
@@ -323,6 +317,13 @@ public class Matrix extends LinAlgObj {
 
     public static Matrix eye(int n, int m) {
         return eye(new Shape(n, m), 0);
+    }
+
+    protected static Matrix viewOf(Matrix other) {
+        Matrix view = new Matrix(other.shape());
+        view.setData(other.data());
+        view.setShape(other.shape());
+        return view;
     }
 
     @Override
