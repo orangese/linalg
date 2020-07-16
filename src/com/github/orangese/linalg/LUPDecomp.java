@@ -9,10 +9,12 @@ public class LUPDecomp {
     private Matrix upper;
     private Matrix perm;
     private int numPermutations;
+    private boolean singular;
 
     public LUPDecomp(Matrix mat) {
         decomp = new Matrix(mat);
 
+        singular = mat.isNotSquare();
         numPermutations = 0;
         permArray = new int[mat.rowDim()];
         for (int i = 0; i < permArray.length; i++) {
@@ -34,7 +36,12 @@ public class LUPDecomp {
                 }
             }
 
-            if (max != j || j < mat.rowDim() && Math.abs(decomp.get(max, j)) < EPS) {
+            boolean isZero = Math.abs(decomp.get(max, j)) < EPS;
+            if (max != j || j < mat.rowDim() && isZero) {
+                if (isZero) {
+                    singular = true;
+                }
+
                 double[] tmpArr = new double[decomp.colDim()];
 
                 System.arraycopy(decomp.data(), decomp.getStrided(max, 0), tmpArr, 0, tmpArr.length);
@@ -100,6 +107,52 @@ public class LUPDecomp {
             }
         }
         return perm;
+    }
+
+    public Matrix solve(Matrix b) {
+        if (singular) {
+            throw new UnsupportedOperationException("matrix is singular");
+        } else if (decomp.rowDim() != b.rowDim()) {
+            throw new IllegalArgumentException("equation is not solveable for LHS with shape " + decomp.shape() +
+                    " and RHS with shape " + b.shape());
+        }
+
+        Matrix x = new Matrix(new Shape(decomp.colDim(), b.colDim()));
+
+        for (int i = 0; i < x.rowDim(); i++) {
+            for (int j = 0; j < x.colDim(); j++) {
+                x.set(i, j, b.get(permArray[i], j));
+            }
+        }
+
+        for (int j = 0; j < x.colDim(); j++) {
+            for (int i = j + 1; i < x.rowDim(); i++) {
+                for (int k = 0; k < x.colDim(); k++) {
+                    x.set(i, k, x.get(i, k) - x.get(j, k) * decomp.get(i, j));
+                }
+            }
+        }
+
+        for (int j = x.colDim() - 1; j >= 0; j--) {
+            for (int k = 0; k < x.colDim(); k++) {
+                x.set(j, k, x.get(j, k) / decomp.get(j, j));
+            }
+            for (int i = 0; i < j; i++) {
+                for (int k = 0; k < x.colDim(); k++) {
+                    x.set(i, k, x.get(i, k) - x.get(j, k) * decomp.get(i, j));
+                }
+            }
+        }
+
+        return x;
+    }
+
+    public Vector solve(Vector b) {
+        return new Vector(solve(Matrix.viewOf(b)));
+    }
+
+    public boolean isSingular() {
+        return singular;
     }
 
     protected int getNumPermutations() {
