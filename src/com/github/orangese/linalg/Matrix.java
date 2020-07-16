@@ -338,14 +338,6 @@ public class Matrix extends LinAlgObj {
         return eye(shape, 0);
     }
 
-    public static Matrix eye(int n, int m, int offset) {
-        return eye(new Shape(n, m), offset);
-    }
-
-    public static Matrix eye(int n, int m) {
-        return eye(new Shape(n, m), 0);
-    }
-
     protected static Matrix viewOf(Matrix other) {
         Matrix view = new Matrix(other.shape());
 
@@ -363,9 +355,9 @@ public class Matrix extends LinAlgObj {
             for (int j = 0; j < colDim(); j++) {
                 result.append(" ").append(String.format("%." + PRINT_PRECISION + "f", get(i, j))).append(" ");
             }
-            result.append("\n");
+            result.append("\n ");
         }
-        result.setLength(result.length() - 1);
+        result.setLength(result.length() - 2);
         return result.append("]").toString();
     }
 

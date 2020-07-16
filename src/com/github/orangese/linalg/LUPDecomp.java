@@ -36,8 +36,8 @@ public class LUPDecomp {
                 }
             }
 
-            boolean isZero = Math.abs(decomp.get(max, j)) < EPS;
-            if (max != j || j < mat.rowDim() && isZero) {
+            boolean isZero = j < mat.rowDim() && Math.abs(decomp.get(max, j)) < EPS;
+            if (max != j || isZero) {
                 if (isZero) {
                     singular = true;
                 }
@@ -57,7 +57,7 @@ public class LUPDecomp {
             }
 
             if (j < mat.rowDim() && j < mat.colDim()) {
-                double diag = decomp.get(j, j);
+                final double diag = decomp.get(j, j);
                 for (int i = j + 1; i < decomp.rowDim(); i++) {
                     decomp.set(i, j, decomp.get(i, j) / diag);
                 }
@@ -66,12 +66,16 @@ public class LUPDecomp {
     }
 
     private double backwardSolve(int i, int j) {
-        double sum = decomp.get(i, j);
-        for (int k = 0; k < Math.min(i, j); k++) {
-            sum -= decomp.get(i, k) * decomp.get(k, j);
+        try {
+            double sum = decomp.get(i, j);
+            for (int k = 0; k < Math.min(i, j); k++) {
+                sum -= decomp.get(i, k) * decomp.get(k, j);
+            }
+            decomp.set(i, j, sum);
+            return sum;
+        } catch (ArrayIndexOutOfBoundsException ignored) {
+            return 0;
         }
-        decomp.set(i, j, sum);
-        return sum;
     }
 
     public Matrix L() {
@@ -127,19 +131,22 @@ public class LUPDecomp {
 
         for (int j = 0; j < x.colDim(); j++) {
             for (int i = j + 1; i < x.rowDim(); i++) {
+                final double factor = decomp.get(i, j);
                 for (int k = 0; k < x.colDim(); k++) {
-                    x.set(i, k, x.get(i, k) - x.get(j, k) * decomp.get(i, j));
+                    x.set(i, k, x.get(i, k) - x.get(j, k) * factor);
                 }
             }
         }
 
         for (int j = x.colDim() - 1; j >= 0; j--) {
+            final double diag = decomp.get(j, j);
             for (int k = 0; k < x.colDim(); k++) {
-                x.set(j, k, x.get(j, k) / decomp.get(j, j));
+                x.set(j, k, x.get(j, k) / diag);
             }
             for (int i = 0; i < j; i++) {
+                final double factor = decomp.get(i, j);
                 for (int k = 0; k < x.colDim(); k++) {
-                    x.set(i, k, x.get(i, k) - x.get(j, k) * decomp.get(i, j));
+                    x.set(i, k, x.get(i, k) - x.get(j, k) * factor);
                 }
             }
         }
