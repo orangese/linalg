@@ -28,6 +28,7 @@ public class Vector extends Matrix {
     public Vector(Matrix other) {
         setData(other.data());
         setShape(other.shape());
+        setStrides(other.getStrides());
     }
 
     public double get(int idx) {

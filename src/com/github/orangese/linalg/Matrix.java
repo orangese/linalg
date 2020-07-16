@@ -58,6 +58,14 @@ public class Matrix extends LinAlgObj {
         strides = new int[]{colDim(), 1};
     }
 
+    protected void setStrides(int[] strides) {
+        this.strides = strides;
+    }
+
+    protected int[] getStrides() {
+        return strides;
+    }
+
     protected int getStrided(int row, int col) {
         if (row < -rowDim() || row >= rowDim()) {
             throw new ArrayIndexOutOfBoundsException(String.format(
@@ -299,7 +307,7 @@ public class Matrix extends LinAlgObj {
     }
 
     public Scalar item() {
-        if (ndims() != 0 && !shape().equals(1, 1)) {
+        if (!shape().equals(1, 1)) {
             throw new IllegalArgumentException("cannot instantiate Scalar from LinAlgObj with shape " + shape());
         }
         return new Scalar(get(0, 0));
