@@ -2,6 +2,14 @@ package com.github.orangese.linalg;
 
 public class Vector extends Matrix {
 
+    public Vector(Shape shape) {
+        super(shape);
+    }
+
+    public Vector(Shape shape, double fillVal) {
+        super(shape, fillVal);
+    }
+
     public Vector(double... data) {
         super(data, new Shape(data.length, 1));
     }

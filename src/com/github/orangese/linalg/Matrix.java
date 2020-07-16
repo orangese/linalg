@@ -7,10 +7,12 @@ import java.util.List;
 public class Matrix extends LinAlgObj {
 
     private static int PRINT_PRECISION = 3;
+    private int[] strides;
 
     public Matrix(Shape shape) {
-        this.setData(new double[shape.size()]);
-        this.setShape(shape);
+        setData(new double[shape.size()]);
+        setShape(shape);
+        calcStrides();
     }
 
     public Matrix(Shape shape, double fillVal) {
@@ -19,33 +21,41 @@ public class Matrix extends LinAlgObj {
     }
 
     public Matrix(double... data) {
-        this.setData(new double[data.length]);
-        System.arraycopy(data, 0, this.data(), 0, data.length);
-        this.setShape(new Shape(1, data.length));
+        setData(new double[data.length]);
+        System.arraycopy(data, 0, data(), 0, data.length);
+        setShape(new Shape(1, data.length));
+        calcStrides();
     }
 
     public Matrix(double[] data, Shape shape) {
         this(data);
-        this.setShape(shape);
+        setShape(shape);
+        calcStrides();
     }
 
     public Matrix(double[][] data) {
-        this.setData(new double[data.length * data[0].length]);
+        setData(new double[data.length * data[0].length]);
         for (int axis = 0; axis < data.length; axis++) {
             if (data[axis].length != data[0].length) {
                 throw new IllegalArgumentException(String.format(
                         "dim %d along axis %d != dim %d along axis 0", data[axis].length, axis, data[0].length
                 ));
             }
-            System.arraycopy(data[axis], 0, this.data(), data[axis].length * axis, data[axis].length);
+            System.arraycopy(data[axis], 0, data(), data[axis].length * axis, data[axis].length);
         }
-        this.setShape(new Shape(data.length, data[0].length));
+        setShape(new Shape(data.length, data[0].length));
+        calcStrides();
     }
 
     public Matrix(Matrix other) {
         setData(new double[other.data().length]);
         System.arraycopy(other.data(), 0, data(), 0, other.data().length);
         setShape(new Shape(other.shape()));
+        strides = other.strides;
+    }
+
+    private void calcStrides() {
+        strides = new int[]{colDim(), 1};
     }
 
     protected int getStrided(int row, int col) {
@@ -65,11 +75,25 @@ public class Matrix extends LinAlgObj {
         } if (col < 0) {
             col += colDim();
         }
-        return row * colDim() + col;
+        return row * strides[0] + col * strides[1];
     }
 
     public double get(int row, int col) {
         return data()[getStrided(row, col)];
+    }
+
+    public Vector getRow(int row) {
+        Vector rowVec = new Vector(new Shape(1, colDim()));
+        System.arraycopy(data(), getStrided(row, 0), rowVec.data(), 0, rowVec.size());
+        return rowVec;
+    }
+
+    public Vector getCol(int col) {
+        Vector colVec = new Vector(new Shape(rowDim(), 1));
+        for (int i = 0; i < rowDim(); i++) {
+            colVec.set(i, get(i, col));
+        }
+        return colVec;
     }
 
     public void set(int row, int col, double newVal) {
@@ -183,7 +207,10 @@ public class Matrix extends LinAlgObj {
 
     public Matrix transpose() {
         Matrix transpose = viewOf(this);
+
         transpose.setShape(new Shape(colDim(), rowDim()));
+        transpose.strides = new int[]{1, colDim()};
+
         return transpose;
     }
 
@@ -321,8 +348,11 @@ public class Matrix extends LinAlgObj {
 
     protected static Matrix viewOf(Matrix other) {
         Matrix view = new Matrix(other.shape());
+
         view.setData(other.data());
         view.setShape(other.shape());
+        view.strides = other.strides;
+
         return view;
     }
 
