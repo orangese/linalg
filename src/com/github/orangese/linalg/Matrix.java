@@ -103,12 +103,11 @@ public class Matrix extends LinAlgObj {
         }
     }
 
-    private void imatMul2Axis(Matrix mat, Matrix newMatrix, boolean reverseOrder) {
-        for (int i = 0; i < (reverseOrder ? mat.rowDim() : rowDim()); i++) {
-            for (int j = 0; j < (reverseOrder ? colDim() : mat.colDim()); j++) {
-                for (int k = 0; k < (reverseOrder ? mat.colDim() : colDim()); k++) {
-                    double prod = reverseOrder ? mat.get(i, k) * get(k, j) : get(i, k) * mat.get(k, j);
-                    newMatrix.set(i, j, newMatrix.get(i, j) + prod);
+    private void imatMul2Axis(Matrix mat, Matrix newMatrix) {
+        for (int i = 0; i < rowDim(); i++) {
+            for (int j = 0; j < mat.colDim(); j++) {
+                for (int k = 0; k <  colDim(); k++) {
+                    newMatrix.set(i, j, newMatrix.get(i, j) + get(i, k) * mat.get(k, j));
                 }
             }
         }
@@ -144,7 +143,7 @@ public class Matrix extends LinAlgObj {
             return (Matrix) (other.mul(this));
         } else {
             Matrix newMatrix = new Matrix(new double[rowDim()][other.colDim()]);
-            imatMul2Axis((Matrix) other, newMatrix, false);
+            imatMul2Axis((Matrix) other, newMatrix);
             return newMatrix;
         }
     }
@@ -176,7 +175,9 @@ public class Matrix extends LinAlgObj {
     @Override
     public <T extends LinAlgObj> void imul(T other) {
         checkAddShapes(other, "matrix multiplication");
-        imatMul2Axis((Matrix) other, this, true);
+        Matrix tmp = new Matrix(data(), shape(), true);
+        setData(new double[data().length]);
+        tmp.imatMul2Axis((Matrix) other, this);
     }
 
     @Override
