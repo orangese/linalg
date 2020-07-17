@@ -123,29 +123,29 @@ public class LUPDecomp {
 
         Matrix x = new Matrix(new Shape(decomp.colDim(), b.colDim()));
 
-        for (int i = 0; i < x.rowDim(); i++) {
-            for (int j = 0; j < x.colDim(); j++) {
+        for (int i = 0; i < decomp.rowDim(); i++) {
+            for (int j = 0; j < b.colDim(); j++) {
                 x.set(i, j, b.get(permArray[i], j));
             }
         }
 
-        for (int j = 0; j < x.colDim(); j++) {
-            for (int i = j + 1; i < x.rowDim(); i++) {
+        for (int j = 0; j < decomp.rowDim(); j++) {
+            for (int i = j + 1; i < decomp.rowDim(); i++) {
                 final double factor = decomp.get(i, j);
-                for (int k = 0; k < x.colDim(); k++) {
+                for (int k = 0; k < b.colDim(); k++) {
                     x.set(i, k, x.get(i, k) - x.get(j, k) * factor);
                 }
             }
         }
 
-        for (int j = x.colDim() - 1; j >= 0; j--) {
+        for (int j = decomp.rowDim() - 1; j >= 0; j--) {
             final double diag = decomp.get(j, j);
-            for (int k = 0; k < x.colDim(); k++) {
+            for (int k = 0; k < b.colDim(); k++) {
                 x.set(j, k, x.get(j, k) / diag);
             }
             for (int i = 0; i < j; i++) {
                 final double factor = decomp.get(i, j);
-                for (int k = 0; k < x.colDim(); k++) {
+                for (int k = 0; k < b.colDim(); k++) {
                     x.set(i, k, x.get(i, k) - x.get(j, k) * factor);
                 }
             }
