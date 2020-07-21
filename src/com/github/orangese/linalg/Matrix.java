@@ -84,17 +84,35 @@ public class Matrix extends LinAlgObj {
         return data()[getStrided(row, col)];
     }
 
+    public void copyRow(int row, Vector dest) {
+        if (dest.size() != colDim()) {
+            throw new ArrayIndexOutOfBoundsException(
+                    "cannot copy row with length " + colDim() + " into array with length" + dest.size()
+            );
+        }
+        System.arraycopy(data(), getStrided(row, 0), dest.data(), 0, dest.size());
+    }
+
+    public void copyCol(int col, Vector dest) {
+        if (dest.size() != rowDim()) {
+            throw new ArrayIndexOutOfBoundsException(
+                    "cannot copy row with length " + rowDim() + " into array with length" + dest.size()
+            );
+        }
+        for (int i = 0; i < rowDim(); i++) {
+            dest.set(i, get(i, col));
+        }
+    }
+
     public Vector getRow(int row) {
         Vector rowVec = new Vector(new Shape(1, colDim()));
-        System.arraycopy(data(), getStrided(row, 0), rowVec.data(), 0, rowVec.size());
+        copyRow(row, rowVec);
         return rowVec;
     }
 
     public Vector getCol(int col) {
         Vector colVec = new Vector(new Shape(rowDim(), 1));
-        for (int i = 0; i < rowDim(); i++) {
-            colVec.set(i, get(i, col));
-        }
+        copyCol(col, colVec);
         return colVec;
     }
 
@@ -232,6 +250,14 @@ public class Matrix extends LinAlgObj {
             throw new IllegalArgumentException("cannot instantiate Scalar from LinAlgObj with shape " + shape());
         }
         return new Scalar(get(0, 0));
+    }
+
+    public Subspace colSpace() {
+        return new Subspace(new LUPDecomp(this));
+    }
+
+    public Subspace rowSpace() {
+        return transpose().colSpace();
     }
 
     public static int getPrintPrecision() {

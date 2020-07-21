@@ -50,15 +50,6 @@ public class Vector extends Matrix {
         return asVector(super.transpose());
     }
 
-    public static Vector asVector(Matrix o) {
-        Vector vec = new Vector();
-
-        vec.setData(o.data());
-        vec.setShape(o.shape());
-
-        return vec;
-    }
-
     public Scalar dot(Vector o) {
         checkAddShapes(o, "dot product"); // add shape requirements == dot prod shape requirements
         double prod = 0;
@@ -66,6 +57,15 @@ public class Vector extends Matrix {
             prod += get(i) * o.get(i);
         }
         return new Scalar(prod);
+    }
+
+    public static Vector asVector(Matrix o) {
+        Vector vec = new Vector();
+
+        vec.setData(o.data());
+        vec.setShape(o.shape());
+
+        return vec;
     }
 
 }

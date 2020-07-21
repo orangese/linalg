@@ -1,30 +1,20 @@
 package com.github.orangese.linalg;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 public class Subspace {
 
     private final LUPDecomp solver;
 
-    public Subspace() {
-        solver = new LUPDecomp(new Matrix(new Shape(0, 0)));
-    }
-
     public Subspace(Vector... vectors) {
         if (vectors.length < 1) {
             throw new IllegalArgumentException("at least one vector needs to be provided");
         }
+        solver = new LUPDecomp(new Matrix(vectors));
+    }
 
-        List<Integer> pivotPos = new LUPDecomp(new Matrix(vectors)).getPivotPos();
-        List<Vector> basisVectors = new ArrayList<>();
-
-        for (Integer pos : pivotPos) {
-            basisVectors.add(vectors[pos]);
-        }
-
-        solver = new LUPDecomp(new Matrix(basisVectors.toArray(new Vector[0])));
+    protected Subspace(LUPDecomp decomp) {
+        solver = decomp;
     }
 
     public boolean contains(Vector vec) {
@@ -38,9 +28,9 @@ public class Subspace {
     }
 
     public Vector[] basis() {
-        Vector[] basis = new Vector[solver.U().rowDim()];
+        Vector[] basis = new Vector[solver.getPivotPos().size()];
         for (int i = 0; i < basis.length; i++) {
-            basis[i] = solver.U().getRow(i);
+            solver.U().copyCol(solver.getPivotPos().get(i), basis[i]);
         }
         return basis;
     }
