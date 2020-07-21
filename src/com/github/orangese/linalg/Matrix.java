@@ -1,8 +1,6 @@
 package com.github.orangese.linalg;
 
 import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Matrix extends LinAlgObj {
 
@@ -47,23 +45,19 @@ public class Matrix extends LinAlgObj {
         calcStrides();
     }
 
-    public Matrix(Matrix other) {
-        setData(new double[other.data().length]);
-        System.arraycopy(other.data(), 0, data(), 0, other.data().length);
-        setShape(new Shape(other.shape()));
-        strides = other.strides;
+    public Matrix(Vector... vectors) {
+        this(Arrays.stream(vectors).map(LinAlgObj::data).toArray(double[][]::new));
+    }
+
+    public Matrix(Matrix o) {
+        setData(new double[o.data().length]);
+        System.arraycopy(o.data(), 0, data(), 0, o.data().length);
+        setShape(new Shape(o.shape()));
+        strides = o.strides;
     }
 
     private void calcStrides() {
         strides = new int[]{colDim(), 1};
-    }
-
-    protected void setStrides(int[] strides) {
-        this.strides = strides;
-    }
-
-    protected int[] getStrides() {
-        return strides;
     }
 
     protected int getStrided(int row, int col) {
@@ -113,19 +107,19 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    protected void checkAddShapes(LinAlgObj other, String op) {
-        if (!shape().equals(other.shape())) {
+    protected void checkAddShapes(LinAlgObj o, String op) {
+        if (!shape().equals(o.shape())) {
             throw new IllegalArgumentException(String.format(
-                "cannot perform %s between shapes %s and %s", op, shape(), other.shape()
+                "cannot perform %s between shapes %s and %s", op, shape(), o.shape()
             ));
         }
     }
 
     @Override
-    protected void checkMulShapes(LinAlgObj other, String op) {
-        if (other.ndims() > 0 && colDim() != other.rowDim()) {
+    protected void checkMulShapes(LinAlgObj o, String op) {
+        if (o.ndims() > 0 && colDim() != o.rowDim()) {
             throw new IllegalArgumentException(String.format(
-                "cannot perform %s between shapes %s and %s", op, shape(), other.shape()
+                "cannot perform %s between shapes %s and %s", op, shape(), o.shape()
             ));
         }
     }
@@ -143,34 +137,34 @@ public class Matrix extends LinAlgObj {
     private void imatPow2Axis(Scalar scalar, Matrix newMatrix) { }
 
     @Override
-    public Matrix add(LinAlgObj other) {
-        checkAddShapes(other, "matrix addition");
+    public Matrix add(LinAlgObj o) {
+        checkAddShapes(o, "matrix addition");
         Matrix newMat = new Matrix(shape());
         for (int i = 0; i < data().length; i++) {
-            newMat.data()[i] = data()[i] + other.data()[i];
+            newMat.data()[i] = data()[i] + o.data()[i];
         }
         return newMat;
     }
 
     @Override
-    public Matrix subtract(LinAlgObj other) {
-        checkAddShapes(other, "matrix subtraction");
+    public Matrix subtract(LinAlgObj o) {
+        checkAddShapes(o, "matrix subtraction");
         Matrix newMat = new Matrix(shape());
         for (int i = 0; i < data().length; i++) {
-            newMat.data()[i] = data()[i] - other.data()[i];
+            newMat.data()[i] = data()[i] - o.data()[i];
         }
         return newMat;
     }
 
     @Override
-    public Matrix mul(Matrix other) {
-        checkMulShapes(other, "matrix multiplication");
-        if (other.ndims() == 0) {
+    public Matrix mul(Matrix o) {
+        checkMulShapes(o, "matrix multiplication");
+        if (o.ndims() == 0) {
             // scalar multiplication is communative
-            return other.mul(this);
+            return o.mul(this);
         } else {
-            Matrix newMatrix = new Matrix(new double[rowDim()][other.colDim()]);
-            imatMul2Axis(other, newMatrix);
+            Matrix newMatrix = new Matrix(new double[rowDim()][o.colDim()]);
+            imatMul2Axis(o, newMatrix);
             return newMatrix;
         }
     }
@@ -184,27 +178,27 @@ public class Matrix extends LinAlgObj {
     }
 
     @Override
-    public void iadd(LinAlgObj other) {
-        checkAddShapes(other, "matrix addition");
+    public void iadd(LinAlgObj o) {
+        checkAddShapes(o, "matrix addition");
         for (int i = 0; i < data().length; i++) {
-            data()[i] += other.data()[i];
+            data()[i] += o.data()[i];
         }
     }
 
     @Override
-    public void isubtract(LinAlgObj other) {
-        checkAddShapes(other, "matrix subtraction");
+    public void isubtract(LinAlgObj o) {
+        checkAddShapes(o, "matrix subtraction");
         for (int i = 0; i < data().length; i++) {
-            data()[i] -= other.data()[i];
+            data()[i] -= o.data()[i];
         }
     }
 
     @Override
-    public void imul(LinAlgObj other) {
-        checkAddShapes(other, "matrix multiplication");
+    public void imul(LinAlgObj o) {
+        checkAddShapes(o, "matrix multiplication");
         Matrix tmp = viewOf(this);
         setData(new double[data().length]);
-        tmp.imatMul2Axis((Matrix) other, this);
+        tmp.imatMul2Axis((Matrix) o, this);
     }
 
     @Override
@@ -220,79 +214,6 @@ public class Matrix extends LinAlgObj {
         transpose.strides = new int[]{1, colDim()};
 
         return transpose;
-    }
-
-    public Matrix ref() {
-        return new LUPDecomp(this).U();
-    }
-
-    private Matrix rref(List<Integer> pivotCache) {
-        final Matrix ref = ref();
-
-        int prevPivotPos = -1;
-        for (int j = 0; j < colDim(); j++) {
-            boolean foundPivot = false;
-
-            for (int i = Math.min(j, rowDim() - 1); i >= 0; i--) {
-                final double currElem = ref.get(i, j);
-
-                if (Math.abs(currElem) >= LUPDecomp.EPS) {
-                    if (!foundPivot && i <= prevPivotPos) {
-                        break;
-
-                    } else if (!foundPivot) {
-                        for (int k = 0; k < colDim(); k++) {
-                            ref.set(i, k, ref.get(i, k) / currElem);
-                        }
-                        prevPivotPos = i;
-                        foundPivot = true;
-
-                        if (pivotCache != null) {
-                            pivotCache.add(i);
-                        }
-
-                    } else {
-                        final double factor = ref.get(i, j);
-                        for (int k = j; k < colDim(); k++) {
-                            ref.set(i, k, ref.get(i, k) - factor * ref.get(prevPivotPos, k));
-                        }
-                    }
-                }
-            }
-        }
-
-        return ref;
-    }
-
-    public Matrix rref() {
-        return rref(null);
-    }
-
-    public int rank() {
-        return pivotPos().size();
-    }
-
-    public List<Integer> pivotPos() {
-        List<Integer> pivots = new ArrayList<>();
-        rref(pivots);
-        return pivots;
-    }
-
-    public Matrix inv() {
-        return new LUPDecomp(this).solve(eye(shape()));
-    }
-
-    public Scalar det() {
-        if (isNotSquare()) {
-            throw new UnsupportedOperationException("cannot compute determinant for nonsquare matrix");
-        }
-        LUPDecomp lupDecomp = new LUPDecomp(this);
-        if (lupDecomp.isSingular()) {
-            return new Scalar(0);
-        } else {
-            double coef = Math.pow(-1, lupDecomp.getNumPermutations());
-            return lupDecomp.U().trace().mul(coef);
-        }
     }
 
     public Scalar trace() {
@@ -346,12 +267,12 @@ public class Matrix extends LinAlgObj {
         return eye(shape, 0);
     }
 
-    protected static Matrix viewOf(Matrix other) {
-        Matrix view = new Matrix(other.shape());
+    public static Matrix viewOf(Matrix o) {
+        Matrix view = new Matrix(o.shape());
 
-        view.setData(other.data());
-        view.setShape(other.shape());
-        view.strides = other.strides;
+        view.setData(o.data());
+        view.setShape(o.shape());
+        view.strides = o.strides;
 
         return view;
     }

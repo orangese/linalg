@@ -25,12 +25,6 @@ public class Vector extends Matrix {
         }
     }
 
-    public Vector(Matrix other) {
-        setData(other.data());
-        setShape(other.shape());
-        setStrides(other.getStrides());
-    }
-
     public double get(int idx) {
         return data()[idx];
     }
@@ -39,28 +33,37 @@ public class Vector extends Matrix {
         data()[idx] = newVal;
     }
 
-    public Vector add(Vector other) {
-        return new Vector(super.add(other));
+    public Vector add(Vector o) {
+        return asVector(super.add(o));
     }
 
-    public Vector subtract(Vector other) {
-        return new Vector(super.subtract(other));
+    public Vector subtract(Vector o) {
+        return asVector(super.subtract(o));
     }
 
-    public Vector mul(Vector other) {
-        return new Vector(super.mul(other));
+    public Vector mul(Vector o) {
+        return asVector(super.mul(o));
     }
 
     @Override
     public Vector transpose() {
-        return new Vector(super.transpose());
+        return asVector(super.transpose());
     }
 
-    public Scalar dot(Vector other) {
-        checkAddShapes(other, "dot product"); // add shape requirements == dot prod shape requirements
+    public static Vector asVector(Matrix o) {
+        Vector vec = new Vector();
+
+        vec.setData(o.data());
+        vec.setShape(o.shape());
+
+        return vec;
+    }
+
+    public Scalar dot(Vector o) {
+        checkAddShapes(o, "dot product"); // add shape requirements == dot prod shape requirements
         double prod = 0;
         for (int i = 0; i < data().length; i++) {
-            prod += get(i) * other.get(i);
+            prod += get(i) * o.get(i);
         }
         return new Scalar(prod);
     }

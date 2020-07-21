@@ -40,35 +40,33 @@ public abstract class LinAlgObj {
         return shape.size();
     }
 
-    protected abstract void checkAddShapes(LinAlgObj other, String op);
+    protected abstract void checkAddShapes(LinAlgObj o, String op);
 
-    protected abstract void checkMulShapes(LinAlgObj other, String op);
+    protected abstract void checkMulShapes(LinAlgObj o, String op);
 
-    public abstract LinAlgObj add(LinAlgObj other);
+    public abstract LinAlgObj add(LinAlgObj o);
 
-    public abstract LinAlgObj subtract(LinAlgObj other);
+    public abstract LinAlgObj subtract(LinAlgObj o);
 
-    public abstract LinAlgObj mul(Matrix other);
+    public abstract LinAlgObj mul(Matrix o);
 
     public abstract LinAlgObj pow(Scalar scalar);
 
-    public abstract void iadd(LinAlgObj other);
+    public abstract void iadd(LinAlgObj o);
 
-    public abstract void isubtract(LinAlgObj other);
+    public abstract void isubtract(LinAlgObj o);
 
-    public abstract void imul(LinAlgObj other);
+    public abstract void imul(LinAlgObj o);
 
     public abstract void ipow(Scalar scalar);
 
     @Override
-    public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        } if (!(other instanceof LinAlgObj)) {
-            return false;
-        }
-        LinAlgObj otherLinAlgObj = (LinAlgObj) other;
-        return Arrays.equals(data, otherLinAlgObj.data) && shape.equals(otherLinAlgObj.shape);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LinAlgObj linAlgObj = (LinAlgObj) o;
+        return Arrays.equals(data, linAlgObj.data) &&
+                Objects.equals(shape, linAlgObj.shape);
     }
 
     @Override

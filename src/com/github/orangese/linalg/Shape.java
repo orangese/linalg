@@ -42,14 +42,12 @@ public class Shape {
     }
 
     @Override
-    public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        } if (!(other instanceof Shape)) {
-            return false;
-        }
-        Shape otherShape = (Shape) other;
-        return rowDim == otherShape.rowDim && colDim == otherShape.colDim;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Shape shape = (Shape) o;
+        return rowDim == shape.rowDim &&
+                colDim == shape.colDim;
     }
 
     @Override
