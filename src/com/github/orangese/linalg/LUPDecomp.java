@@ -1,10 +1,14 @@
 package com.github.orangese.linalg;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LUPDecomp {
 
     public final static double EPS = 1e-10;
     private final Matrix decomp;
     private final int[] permArray;
+    private final List<Integer> pivotPos;
     private Matrix lower;
     private Matrix upper;
     private Matrix perm;
@@ -14,8 +18,10 @@ public class LUPDecomp {
     public LUPDecomp(Matrix mat) {
         decomp = new Matrix(mat);
 
+        pivotPos = new ArrayList<>();
         singular = mat.isNotSquare();
         numPermutations = 0;
+
         permArray = new int[mat.rowDim()];
         for (int i = 0; i < permArray.length; i++) {
             permArray[i] = i;
@@ -58,8 +64,11 @@ public class LUPDecomp {
 
             if (j < mat.rowDim() && j < mat.colDim()) {
                 final double diag = decomp.get(j, j);
-                for (int i = j + 1; i < decomp.rowDim(); i++) {
-                    decomp.set(i, j, decomp.get(i, j) / diag);
+                if (diag != 0) {
+                    pivotPos.add(j);
+                    for (int i = j + 1; i < decomp.rowDim(); i++) {
+                        decomp.set(i, j, decomp.get(i, j) / diag);
+                    }
                 }
             }
         }
@@ -155,15 +164,69 @@ public class LUPDecomp {
     }
 
     public Vector solve(Vector b) {
-        return new Vector(solve(Matrix.viewOf(b)));
+        return Vector.asVector(solve(Matrix.viewOf(b)));
+    }
+
+    public Matrix rref() {
+        final Matrix ref = U();
+
+        int prevPivotPos = -1;
+        for (int j = 0; j < decomp.colDim(); j++) {
+            boolean foundPivot = false;
+
+            for (int i = Math.min(j, decomp.rowDim() - 1); i >= 0; i--) {
+                final double currElem = ref.get(i, j);
+
+                if (Math.abs(currElem) >= LUPDecomp.EPS) {
+                    if (!foundPivot && i <= prevPivotPos) {
+                        break;
+
+                    } else if (!foundPivot) {
+                        for (int k = 0; k < decomp.colDim(); k++) {
+                            ref.set(i, k, ref.get(i, k) / currElem);
+                        }
+                        prevPivotPos = i;
+                        foundPivot = true;
+
+                    } else {
+                        final double factor = ref.get(i, j);
+                        for (int k = j; k < decomp.colDim(); k++) {
+                            ref.set(i, k, ref.get(i, k) - factor * ref.get(prevPivotPos, k));
+                        }
+                    }
+                }
+            }
+        }
+
+        return ref;
+    }
+
+    public int rank() {
+        return pivotPos.size();
+    }
+
+    public List<Integer> getPivotPos() {
+        return pivotPos;
+    }
+
+    public Matrix inv() {
+        return solve(Matrix.eye(decomp.shape()));
+    }
+
+    public Scalar det() {
+        if (decomp.isNotSquare()) {
+            throw new UnsupportedOperationException("cannot compute determinant for nonsquare matrix");
+        }
+        if (isSingular()) {
+            return new Scalar(0);
+        } else {
+            double coef = Math.pow(-1, numPermutations);
+            return U().trace().mul(coef);
+        }
     }
 
     public boolean isSingular() {
         return singular;
-    }
-
-    protected int getNumPermutations() {
-        return numPermutations;
     }
 
     @Override
