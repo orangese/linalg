@@ -19,7 +19,7 @@ public class LUPDecomp {
         decomp = new Matrix(mat);
 
         pivotPos = new ArrayList<>();
-        singular = mat.isNotSquare();
+        singular = !mat.isSquare();
         numPermutations = 0;
 
         permArray = new int[mat.rowDim()];
@@ -91,7 +91,7 @@ public class LUPDecomp {
         if (lower == null) {
             lower = new Matrix(new Shape(decomp.rowDim(), decomp.rowDim()));
             for (int j = 0; j < lower.colDim(); j++) {
-                for (int i = j; i < lower.rowDim(); i++) {
+                for (int i = j; i < Math.min(lower.rowDim(), decomp.colDim()); i++) {
                     lower.set(i, j, decomp.get(i, j));
                 }
                 lower.set(j, j, 1);
@@ -124,12 +124,12 @@ public class LUPDecomp {
 
     public Matrix solve(Matrix b) {
         if (singular) {
-            throw new UnsupportedOperationException("matrix is singular");
-        } else if (decomp.rowDim() != b.rowDim()) {
+            throw new ArithmeticException("matrix is singular");
+        }
+        if (decomp.rowDim() != b.rowDim()) {
             throw new IllegalArgumentException("equation is not solveable for LHS with shape " + decomp.shape() +
                     " and RHS with shape " + b.shape());
         }
-
         Matrix x = new Matrix(new Shape(decomp.colDim(), b.colDim()));
 
         for (int i = 0; i < decomp.rowDim(); i++) {
@@ -214,7 +214,7 @@ public class LUPDecomp {
     }
 
     public Scalar det() {
-        if (decomp.isNotSquare()) {
+        if (!decomp.isSquare()) {
             throw new UnsupportedOperationException("cannot compute determinant for nonsquare matrix");
         }
         if (isSingular()) {

@@ -120,8 +120,8 @@ public class Matrix extends LinAlgObj {
         data()[getStrided(row, col)] = newVal;
     }
 
-    public boolean isNotSquare() {
-        return rowDim() != colDim();
+    public boolean isSquare() {
+        return rowDim() == colDim();
     }
 
     @Override
@@ -235,7 +235,7 @@ public class Matrix extends LinAlgObj {
     }
 
     public Scalar trace() {
-        if (isNotSquare()) {
+        if (!isSquare()) {
             throw new UnsupportedOperationException("cannot compute trace for nonsquare matrix");
         }
         double trace = 1;
@@ -253,7 +253,7 @@ public class Matrix extends LinAlgObj {
     }
 
     public Subspace colSpace() {
-        return new Subspace(new LUPDecomp(this));
+        return new Subspace(this);
     }
 
     public Subspace rowSpace() {

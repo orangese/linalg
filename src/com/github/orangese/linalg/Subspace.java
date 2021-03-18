@@ -5,34 +5,42 @@ import java.util.Objects;
 public class Subspace {
 
     private final LUPDecomp solver;
+    private final Vector[] basis;
+
+    public Subspace(Matrix mat) {
+        if (mat.size() == 0) {
+            throw new IllegalArgumentException("cannot create subspace out of empty matrix");
+        }
+        solver = new LUPDecomp(mat);
+        basis = new Vector[solver.rank()];
+        for (int i = 0; i < basis.length; i++) {
+            mat.copyCol(solver.getPivotPos().get(i), basis[i]);
+        }
+    }
 
     public Subspace(Vector... vectors) {
-        if (vectors.length < 1) {
-            throw new IllegalArgumentException("at least one vector needs to be provided");
-        }
-        solver = new LUPDecomp(new Matrix(vectors));
+        this(new Matrix(vectors));
     }
 
-    protected Subspace(LUPDecomp decomp) {
-        solver = decomp;
-    }
-
-    public boolean contains(Vector vec) {
+    public boolean contains(Vector x) {
         try {
-            solver.solve(vec);
+            solver.solve(x);
             return true;
         } catch (UnsupportedOperationException|IllegalArgumentException exc) {
-            exc.printStackTrace();
             return false;
         }
     }
 
     public Vector[] basis() {
-        Vector[] basis = new Vector[solver.getPivotPos().size()];
-        for (int i = 0; i < basis.length; i++) {
-            solver.U().copyCol(solver.getPivotPos().get(i), basis[i]);
-        }
         return basis;
+    }
+
+    public int dim() {
+        return basis().length;
+    }
+
+    public int encompassingSpace() {
+        return solver.U().rowDim();
     }
 
     @Override
