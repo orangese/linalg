@@ -4,8 +4,10 @@ public class Main {
 
 	public static void main(String[] args) {
 		Matrix a = new Matrix(new double[][]{
-			    new double[]{4, 1, -3},
-			    new double[]{0, 2, 8},
+			    new double[]{6, 0, -3,  5},
+			    new double[]{4, 13, 6, -8},
+			    new double[]{-1, 0, 7, 4},
+			    new double[]{8, 6, 0, 2}
 		});
 		Matrix c = new Matrix(new double[][]{
 			new double[]{-1, 9, -6},
@@ -15,7 +17,8 @@ public class Main {
 			new double[]{7, 2},
 			    new double[]{-4, -1}
 		});
-		System.out.println(d.mul(c).subtract(a));
+		System.out.println(a.det());
+//                System.out.println(d.mul(c).subtract(a));
 
 //                try {
 //                        System.out.print("AB=");

@@ -2,6 +2,8 @@ package com.github.orangese.linalg;
 
 import java.util.Arrays;
 
+import com.github.orangese.linalg.LUPDecomp;
+
 public class Matrix extends LinAlgObj {
 
     private static int PRINT_PRECISION = 3;
@@ -250,6 +252,10 @@ public class Matrix extends LinAlgObj {
             throw new IllegalArgumentException("cannot instantiate Scalar from LinAlgObj with shape " + shape());
         }
         return new Scalar(get(0, 0));
+    }
+
+    public Scalar det() {
+	return (new LUPDecomp(this)).det();
     }
 
     public Subspace colSpace() {
